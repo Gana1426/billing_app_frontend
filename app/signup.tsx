@@ -1,27 +1,28 @@
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
-    StyleSheet,
-    View,
-    TextInput,
-    TouchableOpacity,
-    Text,
-    KeyboardAvoidingView,
-    Platform,
     Alert,
-    Dimensions,
     FlatList,
     Image,
-    SafeAreaView
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { authApi, API_BASE_URL } from '../services/api';
-import { useRouter } from 'expo-router';
-import { useAppTheme } from '../context/ThemeContext';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp, SlideInRight, SlideOutLeft } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SOUTHERN_VEGETABLES } from '../constants/Vegetables';
-
-const { width } = Dimensions.get('window');
+import { useAppTheme } from '../context/ThemeContext';
+import { API_BASE_URL, authApi } from '../services/api';
+import { getVegetableImage } from '../utils/imageHelper';
+import { moderateScale, scale, verticalScale } from '../utils/responsive';
 
 export default function SignupScreen() {
     const [step, setStep] = useState(1);
@@ -36,6 +37,7 @@ export default function SignupScreen() {
 
     const router = useRouter();
     const { t, isDark, language, toggleTheme } = useAppTheme();
+    const insets = useSafeAreaInsets();
 
     const filteredVegetables = SOUTHERN_VEGETABLES.filter(veg =>
         veg.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -110,13 +112,13 @@ export default function SignupScreen() {
 
     const containerStyle = [
         styles.container,
-        { backgroundColor: isDark ? '#121212' : '#F8F9FA' }
+        { backgroundColor: isDark ? '#121212' : '#F4F6F9' }
     ];
 
     const inputContainerStyle = [
         styles.inputContainer,
         {
-            backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+            backgroundColor: isDark ? '#2C2C2C' : '#F9FAFB',
             borderColor: isDark ? '#333' : '#E0E0E0'
         }
     ];
@@ -124,91 +126,95 @@ export default function SignupScreen() {
     const textColor = isDark ? '#FFFFFF' : '#1A1C1E';
     const placeholderColor = isDark ? '#888' : '#9CA3AF';
     const labelColor = isDark ? '#BBB' : '#6B7280';
+    const primaryColor = '#00A86B';
 
     const renderStep1 = () => (
         <Animated.View entering={FadeInUp.delay(200)} exiting={SlideOutLeft} style={styles.formContainer}>
 
-            {/* Shop Name */}
-            <View style={styles.inputWrapper}>
-                <Text style={[styles.label, { color: labelColor }]}>SHOP NAME</Text>
-                <View style={inputContainerStyle}>
-                    <MaterialCommunityIcons name="store-outline" size={22} color={placeholderColor} style={styles.inputIcon} />
-                    <TextInput
-                        style={[styles.input, { color: textColor }]}
-                        value={shopName}
-                        onChangeText={setShopName}
-                        placeholder="e.g. Fresh Garden Wholesale"
-                        placeholderTextColor={placeholderColor}
-                    />
-                </View>
-            </View>
-
-            {/* Mobile/Username */}
-            <View style={styles.inputWrapper}>
-                <Text style={[styles.label, { color: labelColor }]}>{t.USERNAME.toUpperCase()}</Text>
-                <View style={inputContainerStyle}>
-                    <Ionicons name="phone-portrait-outline" size={22} color={placeholderColor} style={styles.inputIcon} />
-                    <TextInput
-                        style={[styles.input, { color: textColor }]}
-                        value={username}
-                        onChangeText={setUsername}
-                        placeholder="Enter 10 digit number" // Assuming standard usage, though field is username
-                        placeholderTextColor={placeholderColor}
-                        autoCapitalize="none"
-                        keyboardType="default"
-                    />
-                </View>
-            </View>
-
-            {/* Password */}
-            <View style={styles.inputWrapper}>
-                <Text style={[styles.label, { color: labelColor }]}>{t.PASSWORD.toUpperCase()}</Text>
-                <View style={inputContainerStyle}>
-                    <Ionicons name="lock-closed-outline" size={22} color={placeholderColor} style={styles.inputIcon} />
-                    <TextInput
-                        style={[styles.input, { color: textColor, flex: 1 }]}
-                        value={password}
-                        onChangeText={setPassword}
-                        placeholder="Create a password"
-                        placeholderTextColor={placeholderColor}
-                        secureTextEntry={!showPassword}
-                    />
-                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                        <Ionicons
-                            name={showPassword ? "eye-off-outline" : "eye-outline"}
-                            size={20}
-                            color={placeholderColor}
+            <View style={[styles.card, { backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' }]}>
+                {/* Shop Name */}
+                <View style={styles.inputWrapper}>
+                    <Text style={[styles.label, { color: labelColor }]}>SHOP NAME</Text>
+                    <View style={inputContainerStyle}>
+                        <MaterialCommunityIcons name="store-outline" size={20} color={placeholderColor} style={styles.inputIcon} />
+                        <TextInput
+                            style={[styles.input, { color: textColor }]}
+                            value={shopName}
+                            onChangeText={setShopName}
+                            placeholder="e.g. Fresh Garden Wholesale"
+                            placeholderTextColor={placeholderColor}
                         />
-                    </TouchableOpacity>
+                    </View>
                 </View>
+
+                {/* Mobile/Username */}
+                <View style={styles.inputWrapper}>
+                    <Text style={[styles.label, { color: labelColor }]}>{t.USERNAME}</Text>
+                    <View style={inputContainerStyle}>
+                        <Ionicons name="phone-portrait-outline" size={20} color={placeholderColor} style={styles.inputIcon} />
+                        <TextInput
+                            style={[styles.input, { color: textColor }]}
+                            value={username}
+                            onChangeText={setUsername}
+                            placeholder="Enter 10 digit number"
+                            placeholderTextColor={placeholderColor}
+                            autoCapitalize="none"
+                            keyboardType="phone-pad"
+                        />
+                    </View>
+                </View>
+
+                {/* Password */}
+                <View style={styles.inputWrapper}>
+                    <Text style={[styles.label, { color: labelColor }]}>{t.PASSWORD}</Text>
+                    <View style={inputContainerStyle}>
+                        <Ionicons name="lock-closed-outline" size={20} color={placeholderColor} style={styles.inputIcon} />
+                        <TextInput
+                            style={[styles.input, { color: textColor, flex: 1 }]}
+                            value={password}
+                            onChangeText={setPassword}
+                            placeholder="Create a password"
+                            placeholderTextColor={placeholderColor}
+                            secureTextEntry={!showPassword}
+                        />
+                        <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                            <Ionicons
+                                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                                size={20}
+                                color={placeholderColor}
+                            />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* Terms Checkbox */}
+                <TouchableOpacity
+                    style={styles.termsContainer}
+                    onPress={() => setAgreeTerms(!agreeTerms)}
+                    activeOpacity={0.8}
+                >
+                    <View style={[styles.checkbox, agreeTerms && { backgroundColor: primaryColor, borderColor: primaryColor }, !agreeTerms && { borderColor: isDark ? '#666' : '#D1D5DB' }]}>
+                        {agreeTerms && <Ionicons name="checkmark" size={14} color="#FFF" />}
+                    </View>
+                    <Text style={[styles.termsText, { color: labelColor }]}>
+                        I agree to the <Text style={{ color: primaryColor, fontWeight: '600' }}>Terms of Service</Text>.
+                    </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.signupButton, { backgroundColor: primaryColor }]}
+                    onPress={handleNext}
+                    activeOpacity={0.9}
+                >
+                    <Text style={styles.signupButtonText}>Get Started</Text>
+                    <Ionicons name="arrow-forward" size={20} color="#FFF" />
+                </TouchableOpacity>
             </View>
-
-            {/* Terms Checkbox */}
-            <TouchableOpacity
-                style={styles.termsContainer}
-                onPress={() => setAgreeTerms(!agreeTerms)}
-            >
-                <View style={[styles.checkbox, agreeTerms && styles.checkboxChecked, { borderColor: isDark ? '#666' : '#D1D5DB' }]}>
-                    {agreeTerms && <Ionicons name="checkmark" size={14} color="#FFF" />}
-                </View>
-                <Text style={[styles.termsText, { color: labelColor }]}>
-                    I agree to the <Text style={styles.linkText}>Terms of Service</Text> and <Text style={styles.linkText}>Privacy Policy</Text>.
-                </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-                style={styles.signupButton}
-                onPress={handleNext}
-                activeOpacity={0.9}
-            >
-                <Text style={styles.signupButtonText}>Get Started</Text>
-                <Ionicons name="arrow-forward" size={20} color="#FFF" />
-            </TouchableOpacity>
 
             <View style={styles.loginLinkContainer}>
                 <Text style={[styles.loginText, { color: labelColor }]}>Already have an account? </Text>
                 <TouchableOpacity onPress={() => router.replace('/login')}>
-                    <Text style={styles.loginLinkText}>Login</Text>
+                    <Text style={[styles.loginLinkText, { color: primaryColor }]}>Login</Text>
                 </TouchableOpacity>
             </View>
         </Animated.View>
@@ -223,7 +229,7 @@ export default function SignupScreen() {
                 Tap to pick your shop's most popular vegetables
             </Text>
 
-            <View style={[inputContainerStyle, { marginBottom: 15 }]}>
+            <View style={[inputContainerStyle, { marginBottom: 15, borderRadius: scale(12) }]}>
                 <Ionicons name="search-outline" size={20} color={placeholderColor} style={styles.inputIcon} />
                 <TextInput
                     style={[styles.input, { color: textColor }]}
@@ -234,43 +240,46 @@ export default function SignupScreen() {
                 />
             </View>
 
-            <FlatList
-                data={filteredVegetables}
-                keyExtractor={item => item.id}
-                numColumns={3}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100 }}
-                renderItem={({ item }) => {
-                    const isSelected = selectedVegs.includes(item.id);
-                    return (
-                        <TouchableOpacity
-                            style={[
-                                styles.vegItem,
-                                isSelected && styles.vegItemSelected,
-                                { backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF', borderColor: isDark ? '#333' : '#E5E7EB' }
-                            ]}
-                            onPress={() => toggleVegetable(item.id)}
-                        >
-                            <Image source={{ uri: item.image }} style={styles.vegImage} />
-                            <View style={[
-                                styles.overlay,
-                                isSelected && { backgroundColor: 'rgba(255, 179, 0, 0.2)' }
-                            ]}>
-                                {isSelected && <View style={styles.checkBadge}><Ionicons name="checkmark" size={12} color="#FFF" /></View>}
-                            </View>
-                            <Text
-                                numberOfLines={1}
+            {/* Use a nested View with limited height for list instead of full scroll to avoid nested scroll issues if needed */}
+            <View style={{ flex: 1, minHeight: verticalScale(300) }}>
+                <FlatList
+                    data={filteredVegetables}
+                    keyExtractor={item => item.id}
+                    numColumns={3}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 100 }}
+                    renderItem={({ item }) => {
+                        const isSelected = selectedVegs.includes(item.id);
+                        return (
+                            <TouchableOpacity
                                 style={[
-                                    styles.vegName,
-                                    { color: textColor }
+                                    styles.vegItem,
+                                    isSelected && { borderColor: primaryColor, borderWidth: scale(2) },
+                                    { backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF', borderColor: isDark ? '#333' : '#E5E7EB' }
                                 ]}
+                                onPress={() => toggleVegetable(item.id)}
                             >
-                                {language === 'Tamil' ? item.tamilName : item.name}
-                            </Text>
-                        </TouchableOpacity>
-                    );
-                }}
-            />
+                                <Image source={getVegetableImage(item.image, item.name)} style={styles.vegImage} />
+                                <View style={[
+                                    styles.overlay,
+                                    isSelected && { backgroundColor: 'rgba(0, 168, 107, 0.1)' }
+                                ]}>
+                                    {isSelected && <View style={[styles.checkBadge, { backgroundColor: primaryColor }]}><Ionicons name="checkmark" size={12} color="#FFF" /></View>}
+                                </View>
+                                <Text
+                                    numberOfLines={1}
+                                    style={[
+                                        styles.vegName,
+                                        { color: textColor }
+                                    ]}
+                                >
+                                    {language === 'Tamil' ? item.tamilName : item.name}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    }}
+                />
+            </View>
 
             <View style={styles.actionButtons}>
                 <TouchableOpacity
@@ -280,7 +289,7 @@ export default function SignupScreen() {
                     <Ionicons name="arrow-back" size={24} color={textColor} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                    style={[styles.completeButton, loading && { opacity: 0.7 }]}
+                    style={[styles.completeButton, loading && { opacity: 0.7 }, { backgroundColor: primaryColor }]}
                     onPress={handleSignup}
                     disabled={loading}
                 >
@@ -291,56 +300,68 @@ export default function SignupScreen() {
     );
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={containerStyle}
-        >
-            <SafeAreaView style={styles.safeArea}>
+        <View style={{ flex: 1 }}>
+            <StatusBar style={isDark ? "light" : "dark"} backgroundColor={isDark ? "#121212" : "#F4F6F9"} />
 
-                {/* Header Actions */}
-                <View style={styles.headerActions}>
-                    <TouchableOpacity
-                        onPress={() => {
-                            Haptics.selectionAsync();
-                            toggleTheme();
-                        }}
-                        style={styles.themeButton}
-                    >
-                        <View style={[styles.themeIconBg, { backgroundColor: isDark ? '#333' : '#FFF' }]}>
-                            <Ionicons
-                                name={isDark ? "sunny" : "moon"}
-                                size={18}
-                                color={isDark ? "#FFD600" : "#1A1C1E"}
-                            />
-                        </View>
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.content}>
-                    {step === 1 && (
-                        <Animated.View entering={FadeInDown.delay(200)} style={styles.headerContainer}>
-                            <View style={styles.logoWrapper}>
-                                <View style={styles.logoCircle}>
-                                    <MaterialCommunityIcons name="storefront-outline" size={32} color="#FFF" />
-                                </View>
-                                <View style={styles.logoBadge}>
-                                    <Ionicons name="leaf" size={12} color="#FFF" />
-                                </View>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={containerStyle}
+            >
+                <ScrollView
+                    contentContainerStyle={{ flexGrow: 1 }}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* Header Actions */}
+                    <View style={[styles.headerActions, { paddingTop: insets.top + (Platform.OS === 'android' ? 10 : 0) }]}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                Haptics.selectionAsync();
+                                toggleTheme();
+                            }}
+                            style={styles.themeButton}
+                        >
+                            <View style={[styles.themeIconBg, { backgroundColor: isDark ? '#333' : '#FFF' }]}>
+                                <Ionicons
+                                    name={isDark ? "sunny" : "moon"}
+                                    size={18}
+                                    color={isDark ? "#FFD600" : "#1A1C1E"}
+                                />
                             </View>
+                        </TouchableOpacity>
+                    </View>
 
-                            <Text style={[styles.title, { color: textColor }]}>
-                                {language === 'Tamil' ? 'கணக்கை உருவாக்கவும்' : 'Create Account'}
-                            </Text>
-                            <Text style={[styles.subtitle, { color: labelColor }]}>
-                                Join our wholesale community and simplify your daily vegetable billing.
-                            </Text>
-                        </Animated.View>
-                    )}
+                    <View style={[styles.bgDecorCircle, { backgroundColor: isDark ? '#1A3320' : '#E8F5E9', right: isDark ? -100 : -50 }]} />
 
-                    {step === 1 ? renderStep1() : renderStep2()}
-                </View>
-            </SafeAreaView>
-        </KeyboardAvoidingView>
+                    <View style={styles.content}>
+                        {step === 1 && (
+                            <Animated.View entering={FadeInDown.delay(200)} style={styles.headerContainer}>
+                                <View style={styles.logoWrapper}>
+                                    <View style={styles.logoCircle}>
+                                        <MaterialCommunityIcons name="storefront-outline" size={32} color="#FFF" />
+                                    </View>
+                                    <View style={styles.logoBadge}>
+                                        <Ionicons name="leaf" size={12} color="#FFF" />
+                                    </View>
+                                </View>
+
+                                <Text style={[styles.title, { color: textColor }]}>
+                                    {language === 'Tamil' ? 'கணக்கை உருவாக்கவும்' : 'Create Account'}
+                                </Text>
+                                <Text style={[styles.subtitle, { color: labelColor }]}>
+                                    Join our wholesale community and simplify your daily vegetable billing.
+                                </Text>
+                            </Animated.View>
+                        )}
+
+                        {step === 1 ? renderStep1() : renderStep2()}
+                    </View>
+
+                    {/* Spacer for keyboard */}
+                    <View style={{ height: 20 }} />
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </View>
     );
 }
 
@@ -348,21 +369,27 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    safeArea: {
-        flex: 1,
-    },
     headerActions: {
         alignItems: 'flex-end',
-        paddingHorizontal: 20,
-        paddingTop: 10,
+        paddingHorizontal: scale(20),
+        marginBottom: verticalScale(10),
+        zIndex: 10,
     },
     themeButton: {
-        padding: 5,
+        padding: scale(5),
+    },
+    bgDecorCircle: {
+        position: 'absolute',
+        top: -verticalScale(50),
+        width: scale(300),
+        height: scale(300),
+        borderRadius: scale(150),
+        opacity: 0.5,
     },
     themeIconBg: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: scale(40),
+        height: scale(40),
+        borderRadius: scale(20),
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 2,
@@ -373,188 +400,185 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        paddingHorizontal: 25,
-        justifyContent: 'center',
-        paddingBottom: 20
+        paddingHorizontal: scale(24),
+        paddingBottom: verticalScale(20)
     },
     headerContainer: {
         alignItems: 'center',
-        marginBottom: 30,
-        marginTop: -40
+        marginBottom: verticalScale(30),
     },
     logoWrapper: {
-        width: 80,
-        height: 80,
-        marginBottom: 20,
+        width: scale(80),
+        height: scale(80),
+        marginBottom: verticalScale(20),
         alignItems: 'center',
         justifyContent: 'center',
     },
     logoCircle: {
-        width: 70,
-        height: 70,
-        borderRadius: 35,
-        backgroundColor: '#268753', // Deep Green
+        width: scale(70),
+        height: scale(70),
+        borderRadius: scale(24),
+        backgroundColor: '#00A86B', // Deep Green
         alignItems: 'center',
         justifyContent: 'center',
         elevation: 8,
-        shadowColor: '#268753',
+        shadowColor: '#00A86B',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.25,
         shadowRadius: 10,
-        borderWidth: 2,
-        borderColor: '#E8F5E9'
+        transform: [{ rotate: '5deg' }]
     },
     logoBadge: {
         position: 'absolute',
-        top: 0,
-        right: 0,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: '#00C853',
+        top: -5,
+        right: -5,
+        width: scale(24),
+        height: scale(24),
+        borderRadius: scale(12),
+        backgroundColor: '#FFA000',
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 2,
+        borderWidth: scale(2),
         borderColor: '#FFF',
     },
     title: {
-        fontSize: 28,
+        fontSize: moderateScale(26),
         fontWeight: '800',
         textAlign: 'center',
-        marginBottom: 8,
+        marginBottom: verticalScale(8),
         letterSpacing: 0.5,
     },
     subtitle: {
-        fontSize: 14,
+        fontSize: moderateScale(14),
         textAlign: 'center',
-        lineHeight: 20,
+        lineHeight: moderateScale(20),
         fontWeight: '400',
-        maxWidth: 280,
+        maxWidth: scale(280),
     },
     formContainer: {
         width: '100%',
     },
+    card: {
+        borderRadius: scale(24),
+        padding: scale(20),
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+    },
     inputWrapper: {
-        marginBottom: 20,
+        marginBottom: verticalScale(16),
     },
     label: {
-        fontSize: 11,
-        fontWeight: '700',
-        marginBottom: 8,
-        letterSpacing: 1,
+        fontSize: moderateScale(12),
+        fontWeight: '600',
+        marginBottom: verticalScale(6),
+        marginLeft: scale(4)
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        height: 56,
-        borderRadius: 16,
-        paddingHorizontal: 16,
-        borderWidth: 1,
+        height: verticalScale(56),
+        borderRadius: scale(16),
+        paddingHorizontal: scale(16),
+        borderWidth: scale(1),
     },
     inputIcon: {
-        marginRight: 12,
+        marginRight: scale(12),
     },
     input: {
         flex: 1,
         height: '100%',
-        fontSize: 16,
+        fontSize: moderateScale(16),
         fontWeight: '500',
     },
     eyeIcon: {
-        padding: 5,
+        padding: scale(10),
     },
     termsContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 25,
-        marginTop: 5,
-        paddingHorizontal: 5
+        marginBottom: verticalScale(25),
+        marginTop: verticalScale(5),
+        paddingHorizontal: scale(5)
     },
     checkbox: {
-        width: 20,
-        height: 20,
-        borderRadius: 6,
-        borderWidth: 2,
-        marginRight: 10,
+        width: scale(22),
+        height: scale(22),
+        borderRadius: scale(6),
+        borderWidth: scale(2),
+        marginRight: scale(10),
         alignItems: 'center',
         justifyContent: 'center',
     },
-    checkboxChecked: {
-        backgroundColor: '#FFA000',
-        borderColor: '#FFA000',
-    },
     termsText: {
-        fontSize: 13,
+        fontSize: moderateScale(13),
         flex: 1,
-        lineHeight: 18,
-    },
-    linkText: {
-        color: '#00C853',
-        fontWeight: '600',
+        lineHeight: moderateScale(18),
     },
     signupButton: {
-        height: 58,
-        backgroundColor: '#FFA000', // Amber/Orange
-        borderRadius: 16,
+        height: verticalScale(56),
+        borderRadius: scale(16),
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         elevation: 3,
-        shadowColor: '#FFA000',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.2,
         shadowRadius: 8,
     },
     signupButtonText: {
         color: '#FFF',
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginRight: 8,
+        fontSize: moderateScale(16),
+        fontWeight: '700',
+        marginRight: scale(8),
     },
     loginLinkContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        marginTop: 25,
+        marginTop: verticalScale(24),
     },
     loginText: {
-        fontSize: 14,
+        fontSize: moderateScale(14),
         fontWeight: '500',
     },
     loginLinkText: {
-        fontSize: 14,
+        fontSize: moderateScale(14),
         fontWeight: '700',
-        color: '#00C853', // Green
     },
     // Step 2 Styles
     step2Container: {
         flex: 1,
     },
     stepTitle: {
-        fontSize: 22,
+        fontSize: moderateScale(22),
         fontWeight: '800',
-        marginBottom: 5,
+        marginBottom: verticalScale(5),
     },
     stepSubtitle: {
-        fontSize: 14,
-        marginBottom: 20,
+        fontSize: moderateScale(14),
+        marginBottom: verticalScale(20),
     },
     vegItem: {
         flex: 1 / 3,
-        margin: 6,
-        borderRadius: 16,
+        margin: scale(6),
+        borderRadius: scale(16),
         overflow: 'hidden',
-        borderWidth: 1,
+        borderWidth: scale(1),
         alignItems: 'center',
-        height: 120,
+        height: verticalScale(120),
         backgroundColor: '#FFF',
-    },
-    vegItemSelected: {
-        borderColor: '#FFA000',
-        borderWidth: 2,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
     },
     vegImage: {
         width: '100%',
-        height: 85,
+        height: verticalScale(85),
         resizeMode: 'cover',
     },
     overlay: {
@@ -563,42 +587,40 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     checkBadge: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: '#FFA000',
+        width: scale(24),
+        height: scale(24),
+        borderRadius: scale(12),
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 2,
+        borderWidth: scale(2),
         borderColor: '#FFF',
         elevation: 2,
     },
     vegName: {
-        fontSize: 12,
+        fontSize: moderateScale(12),
         fontWeight: '600',
-        marginTop: 6,
-        paddingHorizontal: 4,
+        marginTop: verticalScale(6),
+        paddingHorizontal: scale(4),
         textAlign: 'center',
     },
     actionButtons: {
         flexDirection: 'row',
-        marginTop: 15,
-        gap: 15,
-        paddingBottom: 20,
+        marginTop: verticalScale(15),
+        gap: scale(15),
+        paddingBottom: verticalScale(20),
     },
     backButton: {
-        width: 58,
-        height: 58,
-        borderRadius: 16,
-        borderWidth: 1,
+        width: scale(58),
+        height: verticalScale(56),
+        borderRadius: scale(16),
+        borderWidth: scale(1),
         justifyContent: 'center',
         alignItems: 'center',
     },
     completeButton: {
         flex: 1,
-        height: 58,
-        backgroundColor: '#FFA000',
-        borderRadius: 16,
+        height: verticalScale(56),
+        borderRadius: scale(16),
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',

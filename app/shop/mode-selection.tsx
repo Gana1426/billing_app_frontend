@@ -4,11 +4,9 @@ import {
     View,
     Text,
     TouchableOpacity,
-    Dimensions,
-    SafeAreaView,
     Platform,
-    Image,
-    ScrollView
+    ScrollView,
+    StatusBar as RNStatusBar
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
@@ -16,13 +14,15 @@ import { useAppTheme } from '../../context/ThemeContext';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-
-const { width } = Dimensions.get('window');
+import { moderateScale, scale, verticalScale } from '../../utils/responsive';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 
 export default function ModeSelectionScreen() {
     const router = useRouter();
     const { user, logout } = useAuth();
     const { isDark, toggleTheme, theme } = useAppTheme();
+    const insets = useSafeAreaInsets();
 
     const handleModeSelect = (mode: 'wholesale' | 'retail') => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -36,51 +36,71 @@ export default function ModeSelectionScreen() {
         router.replace('/login');
     };
 
-    return (
-        <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F9F9F9' }]}>
+    const primaryColor = '#00A86B';
+    const accentColor = '#FFA000';
+    const textColor = isDark ? '#FFFFFF' : '#1A1C1E';
+    const labelColor = isDark ? '#BBB' : '#6B7280';
+    const cardBg = isDark ? '#1E1E1E' : '#FFFFFF';
 
-            {/* Top Bar: User Info & Controls */}
-            <View style={styles.topBar}>
+    return (
+        <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F4F6F9' }]}>
+            <StatusBar style={isDark ? "light" : "dark"} backgroundColor={isDark ? "#121212" : "#F4F6F9"} />
+
+            {/* Decorative Background */}
+            <View style={[styles.bgDecorCircle, { backgroundColor: isDark ? '#1A3320' : '#E8F5E9', top: -verticalScale(50), right: -scale(100) }]} />
+            <View style={[styles.bgDecorCircle, { backgroundColor: isDark ? '#1A3320' : '#E8F5E9', top: verticalScale(100), left: -scale(150), width: scale(300), height: scale(300), borderRadius: scale(150) }]} />
+
+            <View style={[styles.topBar, { paddingTop: insets.top + (Platform.OS === 'android' ? 10 : 0) }]}>
                 <View style={styles.userInfo}>
-                    <View style={styles.avatar}>
-                        <Ionicons name="person" size={18} color="#6B7280" />
+                    <View style={[styles.avatar, { backgroundColor: isDark ? '#333' : '#E0F2F1' }]}>
+                        <Text style={[styles.avatarText, { color: primaryColor }]}>
+                            {user?.username?.charAt(0).toUpperCase() || 'A'}
+                        </Text>
                     </View>
                     <View>
-                        <Text style={[styles.loggedInText, { color: isDark ? '#AAA' : '#6B7280' }]}>Hello,</Text>
-                        <Text style={[styles.userName, { color: isDark ? '#FFF' : '#1F2937' }]}>{user?.username || 'Admin'}</Text>
+                        <Text style={[styles.greeting, { color: labelColor }]}>Welcome Back,</Text>
+                        <Text style={[styles.userName, { color: textColor }]}>{user?.username || 'Admin'}</Text>
                     </View>
                 </View>
 
                 <View style={styles.topControls}>
-                    <TouchableOpacity onPress={toggleTheme} style={styles.iconButton}>
-                        <Ionicons name={isDark ? "sunny" : "moon"} size={20} color={isDark ? "#FFD600" : "#6B7280"} />
+                    <TouchableOpacity
+                        onPress={() => {
+                            Haptics.selectionAsync();
+                            toggleTheme();
+                        }}
+                        style={[styles.iconButton, { backgroundColor: isDark ? '#333' : '#FFF' }]}
+                    >
+                        <Ionicons name={isDark ? "sunny" : "moon"} size={20} color={isDark ? "#FFD600" : "#1A1C1E"} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={handleLogout} style={[styles.iconButton, { marginLeft: 8 }]}>
-                        <Ionicons name="log-out-outline" size={22} color="#EF4444" />
+                    <TouchableOpacity
+                        onPress={handleLogout}
+                        style={[styles.iconButton, { backgroundColor: '#FEE2E2', marginLeft: scale(10) }]}
+                    >
+                        <Ionicons name="log-out-outline" size={20} color="#EF4444" />
                     </TouchableOpacity>
                 </View>
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {/* Header / Logo Area */}
+
+                {/* Shop Banner */}
                 <Animated.View entering={FadeInDown.delay(200)} style={styles.header}>
-                    <View style={styles.logoContainer}>
-                        <View style={styles.logoBox}>
-                            <MaterialCommunityIcons name="leaf" size={28} color="#D4A017" />
+                    <View style={[styles.logoContainer, { borderColor: isDark ? '#333' : '#E0E0E0', backgroundColor: isDark ? '#1E1E1E' : '#FFF' }]}>
+                        <View style={[styles.logoBox, { backgroundColor: primaryColor }]}>
+                            <MaterialCommunityIcons name="storefront" size={24} color="#FFF" />
                         </View>
                         <View style={styles.brandTextContainer}>
-                            <Text style={[styles.brandName, { color: isDark ? '#EEE' : '#1A1C1E' }]}>
-                                VEG BILLING
+                            <Text style={[styles.brandName, { color: textColor }]}>
+                                {user?.shopName || 'MY VEGETABLE SHOP'}
                             </Text>
-                            <Text style={[styles.brandSub, { color: isDark ? '#888' : '#888' }]}>
-                                DASHBOARD
+                            <Text style={[styles.brandSub, { color: labelColor }]}>
+                                BILLING DASHBOARD
                             </Text>
                         </View>
                     </View>
 
-                    <Text style={[styles.pageSubtitle, { color: isDark ? '#FFF' : '#1A1C1E' }]}>
-                        Select billing mode
-                    </Text>
+                    <Text style={[styles.sectionTitle, { color: labelColor }]}>SELECT MODE</Text>
                 </Animated.View>
 
                 {/* Cards Container */}
@@ -88,63 +108,54 @@ export default function ModeSelectionScreen() {
                     {/* Wholesale Card */}
                     <Animated.View entering={FadeInUp.delay(300).springify()} style={{ width: '100%' }}>
                         <TouchableOpacity
-                            style={[styles.card, { backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' }]}
+                            style={[styles.card, { backgroundColor: cardBg }]}
                             onPress={() => handleModeSelect('wholesale')}
                             activeOpacity={0.9}
                         >
-                            <View style={styles.cardHeader}>
-                                <View style={[styles.iconBox, { backgroundColor: '#FFF3E0' }]}>
-                                    <MaterialCommunityIcons name="package-variant-closed" size={26} color="#FF9800" />
+                            <View style={styles.cardRibbonOrange} />
+                            <View style={styles.cardContent}>
+                                <View style={[styles.iconBox, { backgroundColor: '#FFF8E1' }]}>
+                                    <MaterialCommunityIcons name="package-variant-closed" size={32} color="#FFA000" />
                                 </View>
-                                <View style={styles.cardTexts}>
-                                    <Text style={[styles.cardTitle, { color: isDark ? '#EEE' : '#1A1C1E' }]}>Wholesale</Text>
-                                    <Text style={styles.cardSubTitleTamil}>மொத்த விற்பனை</Text>
+                                <View style={styles.cardTextContent}>
+                                    <Text style={[styles.cardTitle, { color: textColor }]}>Wholesale</Text>
+                                    <Text style={[styles.cardSubtitle, { color: '#FFA000' }]}>மொத்த விற்பனை</Text>
+                                    <Text style={[styles.cardDesc, { color: labelColor }]}>
+                                        Bulk billing with crate management
+                                    </Text>
                                 </View>
-                                <MaterialCommunityIcons name="storefront-outline" size={50} color={isDark ? '#333' : '#F5F5F5'} style={styles.bgIcon} />
-                            </View>
-
-                            <Text style={[styles.cardDesc, { color: isDark ? '#BBB' : '#6B7280' }]}>
-                                Bulk orders, crate counting, & merchant rates.
-                            </Text>
-
-                            <View style={styles.actionRow}>
-                                <Text style={styles.actionLinkOrange}>Enter Portal</Text>
-                                <Ionicons name="arrow-forward-circle" size={24} color="#F57C00" />
+                                <Ionicons name="chevron-forward" size={24} color={labelColor} />
                             </View>
                         </TouchableOpacity>
                     </Animated.View>
 
                     {/* Retail Card */}
-                    <Animated.View entering={FadeInUp.delay(500).springify()} style={{ width: '100%' }}>
+                    <Animated.View entering={FadeInUp.delay(400).springify()} style={{ width: '100%' }}>
                         <TouchableOpacity
-                            style={[styles.card, { backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' }]}
+                            style={[styles.card, { backgroundColor: cardBg }]}
                             onPress={() => handleModeSelect('retail')}
                             activeOpacity={0.9}
                         >
-                            <View style={styles.cardHeader}>
+                            <View style={styles.cardRibbonGreen} />
+                            <View style={styles.cardContent}>
                                 <View style={[styles.iconBox, { backgroundColor: '#E8F5E9' }]}>
-                                    <MaterialCommunityIcons name="shopping" size={26} color="#2E7D32" />
+                                    <MaterialCommunityIcons name="shopping" size={32} color={primaryColor} />
                                 </View>
-                                <View style={styles.cardTexts}>
-                                    <Text style={[styles.cardTitle, { color: isDark ? '#EEE' : '#1A1C1E' }]}>Retail</Text>
-                                    <Text style={styles.cardSubTitleTamilGreen}>சில்லரை விற்பனை</Text>
+                                <View style={styles.cardTextContent}>
+                                    <Text style={[styles.cardTitle, { color: textColor }]}>Retail</Text>
+                                    <Text style={[styles.cardSubtitle, { color: primaryColor }]}>சில்லரை விற்பனை</Text>
+                                    <Text style={[styles.cardDesc, { color: labelColor }]}>
+                                        Quick billing for individual customers
+                                    </Text>
                                 </View>
-                                <MaterialCommunityIcons name="basket-outline" size={50} color={isDark ? '#333' : '#F5F5F5'} style={styles.bgIcon} />
-                            </View>
-
-                            <Text style={[styles.cardDesc, { color: isDark ? '#BBB' : '#6B7280' }]}>
-                                Individual weights, market rates, quick bill.
-                            </Text>
-
-                            <View style={styles.actionRow}>
-                                <Text style={styles.actionLinkGreen}>Enter Portal</Text>
-                                <Ionicons name="arrow-forward-circle" size={24} color="#2E7D32" />
+                                <Ionicons name="chevron-forward" size={24} color={labelColor} />
                             </View>
                         </TouchableOpacity>
                     </Animated.View>
                 </View>
+
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 
@@ -152,33 +163,44 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
+    bgDecorCircle: {
+        position: 'absolute',
+        width: scale(300),
+        height: scale(300),
+        borderRadius: scale(150),
+        opacity: 0.5,
+    },
     topBar: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: Platform.OS === 'android' ? 40 : 10,
-        paddingBottom: 10,
+        paddingHorizontal: scale(20),
+        paddingBottom: verticalScale(15),
+        marginBottom: verticalScale(10)
     },
     userInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
+        gap: scale(12),
     },
     avatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#E5E7EB',
+        width: scale(40),
+        height: scale(40),
+        borderRadius: scale(14),
         alignItems: 'center',
         justifyContent: 'center',
     },
-    loggedInText: {
-        fontSize: 10,
-        fontWeight: '500',
+    avatarText: {
+        fontSize: moderateScale(18),
+        fontWeight: 'bold',
+    },
+    greeting: {
+        fontSize: moderateScale(11),
+        fontWeight: '600',
+        marginBottom: verticalScale(2)
     },
     userName: {
-        fontSize: 14,
+        fontSize: moderateScale(16),
         fontWeight: '800',
     },
     topControls: {
@@ -186,131 +208,125 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     iconButton: {
-        padding: 8,
-        borderRadius: 20,
-        backgroundColor: 'rgba(0,0,0,0.03)',
+        width: scale(36),
+        height: scale(36),
+        borderRadius: scale(12),
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
     },
     scrollContent: {
-        paddingBottom: 40,
+        paddingBottom: verticalScale(40),
+        paddingHorizontal: scale(20),
     },
     header: {
-        alignItems: 'center',
-        marginTop: 20,
-        marginBottom: 20,
-        paddingHorizontal: 20
+        marginBottom: verticalScale(25),
     },
     logoContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 10,
-        backgroundColor: 'transparent',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: 'rgba(212, 160, 23, 0.3)',
-        borderStyle: 'dashed'
+        marginBottom: verticalScale(25),
+        paddingVertical: verticalScale(15),
+        paddingHorizontal: scale(20),
+        borderRadius: scale(20),
+        borderWidth: scale(1),
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
     logoBox: {
-        marginRight: 10,
+        width: scale(40),
+        height: scale(40),
+        borderRadius: scale(12),
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: scale(15),
     },
     brandTextContainer: {
-        flexDirection: 'column',
+        flex: 1,
     },
     brandName: {
-        fontSize: 16,
+        fontSize: moderateScale(16),
         fontWeight: '900',
-        letterSpacing: 2,
+        letterSpacing: 0.5,
         textTransform: 'uppercase',
     },
     brandSub: {
-        fontSize: 9,
-        letterSpacing: 3,
+        fontSize: moderateScale(10),
         fontWeight: '600',
-        marginTop: 2
+        marginTop: verticalScale(2),
+        letterSpacing: 1,
     },
-    pageSubtitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginTop: 10,
+    sectionTitle: {
+        fontSize: moderateScale(13),
+        fontWeight: '700',
+        letterSpacing: 1,
+        marginLeft: scale(5)
     },
     cardsContainer: {
-        paddingHorizontal: 20,
-        gap: 15,
+        gap: scale(16),
     },
     card: {
-        borderRadius: 24,
-        padding: 20,
-        elevation: 1,
+        borderRadius: scale(20),
+        elevation: 3,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        overflow: 'hidden'
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        overflow: 'hidden',
+        minHeight: verticalScale(100),
     },
-    cardHeader: {
+    cardRibbonOrange: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: 0,
+        width: scale(6),
+        backgroundColor: '#FFA000',
+    },
+    cardRibbonGreen: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: 0,
+        width: scale(6),
+        backgroundColor: '#00A86B',
+    },
+    cardContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 10,
-        position: 'relative',
+        padding: scale(20),
+        paddingLeft: scale(24) // account for ribbon
     },
     iconBox: {
-        width: 45,
-        height: 45,
-        borderRadius: 12,
+        width: scale(50),
+        height: scale(50),
+        borderRadius: scale(14),
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 15,
+        marginRight: scale(16),
     },
-    cardTexts: {
-        flex: 1
+    cardTextContent: {
+        flex: 1,
     },
     cardTitle: {
-        fontSize: 18,
+        fontSize: moderateScale(18),
         fontWeight: '800',
+        marginBottom: verticalScale(2)
     },
-    cardSubTitleTamil: {
-        fontSize: 11,
+    cardSubtitle: {
+        fontSize: moderateScale(12),
         fontWeight: '700',
-        color: '#F57C00',
-        marginTop: 2
-    },
-    cardSubTitleTamilGreen: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#2E7D32',
-        marginTop: 2
-    },
-    bgIcon: {
-        position: 'absolute',
-        right: -10,
-        top: -10,
-        opacity: 0.1,
-        transform: [{ rotate: '-10deg' }]
+        marginBottom: verticalScale(6)
     },
     cardDesc: {
-        fontSize: 13,
-        lineHeight: 18,
-        marginBottom: 15,
-        opacity: 0.8
-    },
-    actionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: 5,
-        paddingTop: 10,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(0,0,0,0.05)'
-    },
-    actionLinkOrange: {
-        color: '#F57C00',
-        fontWeight: '700',
-        fontSize: 14,
-    },
-    actionLinkGreen: {
-        color: '#2E7D32',
-        fontWeight: '700',
-        fontSize: 14,
+        fontSize: moderateScale(11),
+        fontWeight: '500',
     },
 });

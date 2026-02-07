@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Image, Platform, Dimensions, Modal } from 'react-native';
-import { useRouter, useNavigation } from 'expo-router';
-import { vegApi, authApi, adminApi, inventoryApi } from '../../services/api';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SOUTHERN_VEGETABLES, Vegetable } from '../../constants/Vegetables';
 import { useAuth } from '../../context/AuthContext';
 import { useAppTheme } from '../../context/ThemeContext';
-import { Ionicons } from '@expo/vector-icons';
-import { SOUTHERN_VEGETABLES, Vegetable } from '../../constants/Vegetables';
-import { Storage, KEYS } from '../../services/storage';
+import { adminApi, inventoryApi, vegApi } from '../../services/api';
+import { KEYS, Storage } from '../../services/storage';
+import { getVegetableImage } from '../../utils/imageHelper';
 import { NotificationManager } from '../../utils/notificationManager';
+import { moderateScale, scale, verticalScale, wp } from '../../utils/responsive';
 
 // Dynamic import or check for expo-image-picker to prevent bundle crash
 let ImagePicker: any = null;
@@ -17,7 +19,6 @@ try {
     console.log('expo-image-picker not found');
 }
 
-const { width } = Dimensions.get('window');
 // Removed native DateTimePicker to resolve bundle issues
 
 export default function AdminScreen() {
@@ -407,7 +408,7 @@ export default function AdminScreen() {
                                 />
                             </TouchableOpacity>
 
-                            <Image source={{ uri: item.image }} style={styles.vegImage} />
+                            <Image source={getVegetableImage(item.image, item.name)} style={styles.vegImage} />
                             <Text style={dynamicStyles.vegName} numberOfLines={1}>
                                 {language === 'Tamil' ? item.tamilName : item.name}
                             </Text>
@@ -435,22 +436,22 @@ export default function AdminScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    scrollContent: { padding: 15 },
-    header: { fontSize: 20, fontWeight: '800', marginBottom: 5 },
-    subHeader: { fontSize: 16, fontWeight: '700', marginBottom: 12 },
-    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 10 },
-    countText: { fontSize: 12, fontWeight: '600' },
-    card: { borderRadius: 20, padding: 18, elevation: 5, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 6 },
-    input: { height: 50, borderWidth: 1, borderRadius: 12, marginBottom: 12, paddingHorizontal: 15, fontSize: 15 },
+    scrollContent: { padding: scale(15) },
+    header: { fontSize: moderateScale(20), fontWeight: '800', marginBottom: verticalScale(5) },
+    subHeader: { fontSize: moderateScale(16), fontWeight: '700', marginBottom: verticalScale(12) },
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: verticalScale(10) },
+    countText: { fontSize: moderateScale(12), fontWeight: '600' },
+    card: { borderRadius: scale(20), padding: scale(18), elevation: 5, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: scale(6) },
+    input: { height: verticalScale(50), borderWidth: scale(1), borderRadius: scale(12), marginBottom: verticalScale(12), paddingHorizontal: scale(15), fontSize: moderateScale(15) },
     logoPickerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 15,
+        marginBottom: verticalScale(15),
         backgroundColor: 'rgba(0,0,0,0.02)',
-        padding: 10,
-        borderRadius: 12,
-        borderWidth: 1,
+        padding: scale(10),
+        borderRadius: scale(12),
+        borderWidth: scale(1),
         borderColor: '#EEE',
     },
     pickImageBtn: {
@@ -459,69 +460,69 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     pickImageText: {
-        marginLeft: 10,
+        marginLeft: scale(10),
         color: '#2E7D32',
         fontWeight: '600',
-        fontSize: 14,
+        fontSize: moderateScale(14),
     },
-    profileLogoPreview: { width: 60, height: 60, borderRadius: 30, marginLeft: 10 },
+    profileLogoPreview: { width: scale(60), height: scale(60), borderRadius: scale(30), marginLeft: scale(10) },
     clockPickerBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 15,
-        borderRadius: 15,
+        padding: scale(15),
+        borderRadius: scale(15),
         backgroundColor: 'rgba(46, 125, 50, 0.1)',
-        borderWidth: 1,
+        borderWidth: scale(1),
         borderColor: '#2E7D32',
     },
-    clockDisplay: { fontSize: 28, fontWeight: '900', marginLeft: 15, flex: 1 },
+    clockDisplay: { fontSize: moderateScale(28), fontWeight: '900', marginLeft: scale(15), flex: 1 },
     editBtnText: { color: '#2E7D32', fontWeight: 'bold' },
-    saveButton: { backgroundColor: '#2E7D32', paddingVertical: 10, paddingHorizontal: 22, borderRadius: 25 },
-    saveButtonText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+    saveButton: { backgroundColor: '#2E7D32', paddingVertical: verticalScale(10), paddingHorizontal: scale(22), borderRadius: scale(25) },
+    saveButtonText: { color: '#fff', fontSize: moderateScale(15), fontWeight: 'bold' },
     vegGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-    vegItem: { width: '48%', borderRadius: 20, padding: 12, marginBottom: 15, alignItems: 'center', borderWidth: 1, borderColor: '#EEE' },
-    vegImage: { width: 90, height: 90, borderRadius: 45, marginBottom: 10 },
-    vegName: { fontSize: 14, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
-    favoriteBadge: { position: 'absolute', top: 12, right: 12, zIndex: 1 },
+    vegItem: { width: '48%', borderRadius: scale(20), padding: scale(12), marginBottom: verticalScale(15), alignItems: 'center', borderWidth: scale(1), borderColor: '#EEE' },
+    vegImage: { width: scale(90), height: scale(90), borderRadius: scale(45), marginBottom: verticalScale(10) },
+    vegName: { fontSize: moderateScale(14), fontWeight: 'bold', marginBottom: verticalScale(12), textAlign: 'center' },
+    favoriteBadge: { position: 'absolute', top: verticalScale(12), right: scale(12), zIndex: 1 },
     priceContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: 'rgba(46, 125, 50, 0.08)',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 15,
-        borderWidth: 1,
+        paddingVertical: verticalScale(8),
+        paddingHorizontal: scale(12),
+        borderRadius: scale(15),
+        borderWidth: scale(1),
         borderColor: 'rgba(46, 125, 50, 0.2)',
-        marginTop: 5
+        marginTop: verticalScale(5)
     },
     priceInput: {
-        width: 80,
-        height: 45,
-        borderRadius: 12,
-        borderWidth: 1.5,
+        width: scale(80),
+        height: verticalScale(45),
+        borderRadius: scale(12),
+        borderWidth: scale(1.5),
         textAlign: 'center',
-        fontSize: 20,
+        fontSize: moderateScale(20),
         fontWeight: '900',
-        marginHorizontal: 8,
+        marginHorizontal: scale(8),
         elevation: 2,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
-        shadowRadius: 2,
+        shadowRadius: scale(2),
     },
-    currency: { fontSize: 20, fontWeight: '900' },
-    unit: { fontSize: 13, fontWeight: '700' },
+    currency: { fontSize: moderateScale(20), fontWeight: '900' },
+    unit: { fontSize: moderateScale(13), fontWeight: '700' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
-    clockCard: { width: width * 0.85, borderRadius: 30, padding: 25, alignItems: 'center' },
-    modalTitle: { fontSize: 20, fontWeight: '800', marginBottom: 25 },
-    clockControls: { flexDirection: 'row', alignItems: 'center', marginBottom: 30 },
-    clockColumn: { alignItems: 'center', marginHorizontal: 15 },
-    clockText: { fontSize: 45, fontWeight: '900', marginVertical: 10 },
+    clockCard: { width: wp(85), borderRadius: scale(30), padding: scale(25), alignItems: 'center' },
+    modalTitle: { fontSize: moderateScale(20), fontWeight: '800', marginBottom: verticalScale(25) },
+    clockControls: { flexDirection: 'row', alignItems: 'center', marginBottom: verticalScale(30) },
+    clockColumn: { alignItems: 'center', marginHorizontal: scale(15) },
+    clockText: { fontSize: moderateScale(45), fontWeight: '900', marginVertical: verticalScale(10) },
     modalButtons: { flexDirection: 'row', width: '100%', justifyContent: 'space-between' },
-    cancelBtn: { flex: 1, padding: 15, alignItems: 'center' },
-    cancelBtnText: { color: '#888', fontWeight: 'bold', fontSize: 16 },
-    confirmBtn: { flex: 1, backgroundColor: '#2E7D32', padding: 15, borderRadius: 15, alignItems: 'center' },
-    confirmBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+    cancelBtn: { flex: 1, padding: scale(15), alignItems: 'center' },
+    cancelBtnText: { color: '#888', fontWeight: 'bold', fontSize: moderateScale(16) },
+    confirmBtn: { flex: 1, backgroundColor: '#2E7D32', padding: scale(15), borderRadius: scale(15), alignItems: 'center' },
+    confirmBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: moderateScale(16) },
     passwordContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -531,20 +532,20 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         width: '100%',
         alignItems: 'center',
-        marginBottom: 20
+        marginBottom: verticalScale(20)
     },
     addUserBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 15,
-        borderRadius: 15,
+        padding: scale(15),
+        borderRadius: scale(15),
         backgroundColor: 'rgba(46, 125, 50, 0.1)',
-        borderWidth: 1,
+        borderWidth: scale(1),
         borderColor: '#2E7D32',
     },
     addUserText: {
-        marginLeft: 15,
-        fontSize: 16,
+        marginLeft: scale(15),
+        fontSize: moderateScale(16),
         fontWeight: '700',
         color: '#2E7D32'
     }

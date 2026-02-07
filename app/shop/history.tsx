@@ -1,31 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
 import {
-    StyleSheet,
-    View,
-    Text,
-    FlatList,
-    TouchableOpacity,
     ActivityIndicator,
     Alert,
-    Dimensions,
-    Platform
+    FlatList,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { billApi } from '../../services/api';
-import { useAppTheme } from '../../context/ThemeContext';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-
-const { width } = Dimensions.get('window');
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppTheme } from '../../context/ThemeContext';
+import { billApi } from '../../services/api';
+import { moderateScale, scale, verticalScale } from '../../utils/responsive';
 
 export default function BillingHistoryScreen() {
     const [history, setHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedBill, setSelectedBill] = useState<any>(null);
+    const [previewVisible, setPreviewVisible] = useState(false);
     const { t, isDark, language } = useAppTheme();
     const router = useRouter();
+    const insets = useSafeAreaInsets();
 
     useEffect(() => {
         fetchHistory();
@@ -38,7 +43,7 @@ export default function BillingHistoryScreen() {
             setHistory(response.data);
         } catch (error) {
             console.error('Fetch history error:', error);
-            Alert.alert("Error", "Failed to fetch billing history from server.");
+            Alert.alert(t.APP_NAME, "Failed to fetch billing history.");
         } finally {
             setLoading(false);
         }
@@ -47,74 +52,124 @@ export default function BillingHistoryScreen() {
     const handleDownloadPdf = async (billId: string) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         try {
-            const response = await billApi.getPdf(billId);
+            // If we're calling this from the preview modal, we use selectedBill
+            const billIdToUse = billId || selectedBill?.id || selectedBill?.billId;
+            if (!billIdToUse) {
+                Alert.alert("Error", "Bill ID not found.");
+                return;
+            }
 
-            // In a real mobile app, you'd save the blob to a file
-            // Since we're using expo-router and might be on web or mobile, let's handle mobile file save
+            const response = await billApi.getPdf(billIdToUse);
+
             if (Platform.OS !== 'web') {
-                const filename = `bill_${billId}.pdf`;
+                const filename = `bill_${billIdToUse}.pdf`;
                 const fileUri = `${FileSystem.documentDirectory}${filename}`;
 
-                // Convert blob to base64 if needed, or if billApi returns data directly
-                // Assuming axios response type 'blob'
-                const fr = new FileReader();
-                fr.onload = async () => {
-                    const base64Data = (fr.result as string).split(',')[1];
-                    await FileSystem.writeAsStringAsync(fileUri, base64Data, {
-                        encoding: FileSystem.EncodingType.Base64,
-                    });
-                    await Sharing.shareAsync(fileUri);
-                };
-                fr.readAsDataURL(response.data);
+                let base64Data = response.data;
+
+                // Ensure data is string (handle blob if necessary)
+                if (typeof base64Data !== 'string') {
+                    Alert.alert("Error", "Invalid PDF data received.");
+                    return;
+                }
+
+                await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+                    encoding: 'base64',
+                });
+                await Sharing.shareAsync(fileUri);
             } else {
-                // Web fallback
-                const url = window.URL.createObjectURL(new Blob([response.data]));
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', `bill_${billId}.pdf`);
-                document.body.appendChild(link);
-                link.click();
+                Alert.alert("Web Download", "PDF download not fully supported in this web preview.");
             }
         } catch (error) {
-            Alert.alert("Error", "Failed to download PDF.");
+            console.error("PDF Download error", error);
+            Alert.alert("Error", "Failed to download or share PDF.");
         }
     };
 
+    const handleViewBill = (bill: any) => {
+        Haptics.selectionAsync();
+        setSelectedBill(bill);
+        setPreviewVisible(true);
+    };
+
+    const primaryColor = '#00A86B';
+    const accentColor = '#FFA000';
+    const textColor = isDark ? '#FFFFFF' : '#1A1C1E';
+    const labelColor = isDark ? '#BBB' : '#6B7280';
+    const cardBg = isDark ? '#1E1E1E' : '#FFFFFF';
+
     const renderItem = ({ item, index }: { item: any; index: number }) => (
         <Animated.View
-            entering={FadeInDown.delay(index * 100).duration(500)}
-            style={[styles.historyCard, { backgroundColor: isDark ? '#1E1E1E' : '#FFF' }]}
+            entering={FadeInDown.delay(index * 50).springify()}
+            style={[styles.historyCard, { backgroundColor: cardBg }]}
         >
             <View style={styles.cardHeader}>
-                <View>
-                    <Text style={[styles.billNumber, { color: isDark ? '#EEE' : '#333' }]}>#{item.billNumber}</Text>
-                    <Text style={styles.billDate}>{new Date(item.date).toLocaleDateString()}</Text>
+                <View style={[styles.iconBox, { backgroundColor: index % 2 === 0 ? '#E8F5E9' : '#FFF3E0' }]}>
+                    <MaterialCommunityIcons
+                        name={index % 2 === 0 ? "leaf" : "carrot"}
+                        size={20}
+                        color={index % 2 === 0 ? primaryColor : accentColor}
+                    />
                 </View>
-                <Text style={[styles.billAmount, { color: isDark ? '#81C784' : '#2E7D32' }]}>₹{item.grandTotal.toFixed(2)}</Text>
+                <View style={styles.headerText}>
+                    <Text style={[styles.billNumber, { color: textColor }]}>#{item.billNumber}</Text>
+                    <Text style={[styles.billDate, { color: labelColor }]}>{new Date(item.date).toLocaleDateString()}</Text>
+                </View>
+                <View style={styles.amountBadge}>
+                    <Text style={[styles.currencySymbol, { color: primaryColor }]}>₹</Text>
+                    <Text style={[styles.billAmount, { color: primaryColor }]}>
+                        {item.grandTotal.toFixed(0)}
+                    </Text>
+                </View>
             </View>
 
-            <View style={[styles.divider, { backgroundColor: isDark ? '#333' : '#EEE' }]} />
+            <View style={[styles.divider, { backgroundColor: isDark ? '#333' : '#F0F0F0' }]} />
 
             <View style={styles.cardFooter}>
-                <Text style={styles.itemCount}>{item.items.length} {language === 'Tamil' ? 'பொருட்கள்' : 'items'}</Text>
+                <View style={styles.itemInfo}>
+                    <Ionicons name="basket-outline" size={16} color={labelColor} />
+                    <Text style={[styles.itemCount, { color: labelColor }]}>
+                        {item.items.length} {language === 'Tamil' ? 'பொருட்கள்' : 'items'}
+                    </Text>
+                </View>
+
                 <TouchableOpacity
-                    style={styles.pdfButton}
-                    onPress={() => handleDownloadPdf(item.id || item.billId || index.toString())}
+                    style={[styles.pdfButton, { backgroundColor: isDark ? '#333' : '#F5F5F5' }]}
+                    onPress={() => handleViewBill(item)}
                 >
-                    <Ionicons name="document-text-outline" size={18} color="#FFF" />
-                    <Text style={styles.pdfButtonText}>PDF</Text>
+                    <Text style={[styles.pdfButtonText, { color: textColor }]}>View Bill</Text>
+                    <View style={[styles.pdfIconCircle, { backgroundColor: primaryColor }]}>
+                        <Ionicons name="arrow-forward" size={14} color="#FFF" />
+                    </View>
                 </TouchableOpacity>
             </View>
         </Animated.View>
     );
 
     return (
-        <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F8F9FA' }]}>
+        <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F4F6F9' }]}>
+            <StatusBar style={isDark ? "light" : "dark"} backgroundColor={isDark ? "#121212" : "#F4F6F9"} />
+
+            {/* Header Background */}
+            <View style={[styles.bgDecorCircle, { backgroundColor: isDark ? '#1A3320' : '#E8F5E9', top: -verticalScale(100), right: -scale(50) }]} />
+
+            {/* NavBar */}
+            <View style={[styles.navBar, { paddingTop: insets.top + (Platform.OS === 'android' ? 10 : 0) }]}>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={[styles.backButton, { backgroundColor: isDark ? '#333' : '#FFF' }]}
+                >
+                    <Ionicons name="arrow-back" size={24} color={textColor} />
+                </TouchableOpacity>
+                <Text style={[styles.navTitle, { color: textColor }]}>History</Text>
+                <View style={{ width: scale(40) }} />
+            </View>
+
             {loading ? (
                 <View style={styles.centered}>
-                    <ActivityIndicator size="large" color="#2E7D32" />
-                    <Text style={[styles.loadingText, { color: isDark ? '#888' : '#666' }]}>
-                        {language === 'Tamil' ? 'வரலாற்றை ஏற்றுகிறது...' : 'Fetching History...'}
+                    <ActivityIndicator size="large" color={primaryColor} />
+                    <Text style={[styles.loadingText, { color: labelColor }]}>
+                        {language === 'Tamil' ? 'ஏற்றுகிறது...' : 'Loading...'}
                     </Text>
                 </View>
             ) : (
@@ -123,11 +178,14 @@ export default function BillingHistoryScreen() {
                     renderItem={renderItem}
                     keyExtractor={(item, index) => item.id || index.toString()}
                     contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <MaterialCommunityIcons name="history" size={100} color={isDark ? '#333' : '#DDD'} />
-                            <Text style={[styles.emptyText, { color: isDark ? '#666' : '#999' }]}>
-                                No billing history found.
+                            <View style={[styles.emptyIconBg, { backgroundColor: isDark ? '#1E1E1E' : '#FFF' }]}>
+                                <MaterialCommunityIcons name="history" size={60} color={isDark ? '#333' : '#E0E0E0'} />
+                            </View>
+                            <Text style={[styles.emptyText, { color: labelColor }]}>
+                                No billing history yet.
                             </Text>
                         </View>
                     }
@@ -135,6 +193,78 @@ export default function BillingHistoryScreen() {
                     refreshing={loading}
                 />
             )}
+
+            {/* Bill Preview Modal */}
+            <Modal
+                visible={previewVisible}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setPreviewVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: isDark ? '#1E1E1E' : '#FFF' }]}>
+                        <View style={styles.modalDragHandle} />
+                        <View style={styles.modalHeader}>
+                            <View>
+                                <Text style={[styles.modalTitle, { color: textColor }]}>Bill Details</Text>
+                                <Text style={[styles.modalSubtitle, { color: labelColor }]}>
+                                    #{selectedBill?.billNumber} • {selectedBill && new Date(selectedBill.date).toLocaleString()}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={[styles.closeIcon, { backgroundColor: isDark ? '#333' : '#F5F5F5' }]}
+                                onPress={() => setPreviewVisible(false)}
+                            >
+                                <Ionicons name="close" size={24} color={textColor} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                            <View style={styles.tableHeader}>
+                                <Text style={[styles.tableHeaderText, { flex: 2, color: labelColor }]}>Item</Text>
+                                <Text style={[styles.tableHeaderText, { flex: 1, textAlign: 'center', color: labelColor }]}>Qty</Text>
+                                <Text style={[styles.tableHeaderText, { flex: 1, textAlign: 'right', color: labelColor }]}>Price</Text>
+                                <Text style={[styles.tableHeaderText, { flex: 1, textAlign: 'right', color: labelColor }]}>Total</Text>
+                            </View>
+
+                            {selectedBill?.items.map((item: any, idx: number) => (
+                                <View key={idx} style={[styles.tableRow, { borderBottomColor: isDark ? '#333' : '#F0F0F0' }]}>
+                                    <View style={{ flex: 2 }}>
+                                        <Text style={[styles.itemName, { color: textColor }]}>
+                                            {language === 'Tamil' ? item.tamilName : item.name}
+                                        </Text>
+                                        <Text style={[styles.itemSubName, { color: labelColor }]}>{item.name.toUpperCase()}</Text>
+                                    </View>
+                                    <Text style={[styles.tableCell, { flex: 1, textAlign: 'center', color: textColor }]}>{item.quantity} kg</Text>
+                                    <Text style={[styles.tableCell, { flex: 1, textAlign: 'right', color: textColor }]}>₹{item.price}</Text>
+                                    <Text style={[styles.tableCell, { flex: 1, textAlign: 'right', fontWeight: 'bold', color: primaryColor }]}>₹{item.total}</Text>
+                                </View>
+                            ))}
+
+                            <View style={styles.totalSection}>
+                                <View style={styles.totalRow}>
+                                    <Text style={[styles.totalLabel, { color: labelColor }]}>Subtotal</Text>
+                                    <Text style={[styles.totalValue, { color: textColor }]}>₹{selectedBill?.grandTotal.toFixed(2)}</Text>
+                                </View>
+                                <View style={[styles.grandTotalRow, { backgroundColor: isDark ? '#252525' : '#F9F9F9' }]}>
+                                    <Text style={[styles.grandTotalLabel, { color: textColor }]}>GRAND TOTAL</Text>
+                                    <Text style={[styles.grandTotalValue, { color: primaryColor }]}>₹{selectedBill?.grandTotal.toFixed(2)}</Text>
+                                </View>
+                            </View>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <TouchableOpacity
+                                style={[styles.downloadBtn, { backgroundColor: primaryColor }]}
+                                onPress={() => handleDownloadPdf('')}
+                            >
+                                <MaterialCommunityIcons name="file-pdf-box" size={20} color="#FFF" />
+                                <Text style={styles.downloadBtnText}>Download PDF</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -143,87 +273,286 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
+    bgDecorCircle: {
+        position: 'absolute',
+        width: scale(350),
+        height: scale(350),
+        borderRadius: scale(175),
+        opacity: 0.6,
+    },
+    navBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: scale(20),
+        paddingBottom: verticalScale(15),
+    },
+    backButton: {
+        width: scale(40),
+        height: scale(40),
+        borderRadius: scale(12),
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+    },
+    navTitle: {
+        fontSize: moderateScale(18),
+        fontWeight: '700',
+        letterSpacing: 0.5,
+    },
     centered: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
     loadingText: {
-        marginTop: 15,
-        fontSize: 14,
+        marginTop: verticalScale(15),
+        fontSize: moderateScale(14),
         fontWeight: '600',
     },
     listContent: {
-        padding: 15,
-        paddingBottom: 40,
+        padding: scale(20),
+        paddingBottom: verticalScale(40),
     },
     historyCard: {
-        borderRadius: 20,
-        padding: 18,
-        marginBottom: 15,
-        elevation: 3,
+        borderRadius: scale(24),
+        padding: scale(16),
+        marginBottom: verticalScale(16),
+        elevation: 2,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
     cardHeader: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: verticalScale(12),
+    },
+    iconBox: {
+        width: scale(40),
+        height: scale(40),
+        borderRadius: scale(12),
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: scale(12),
+    },
+    headerText: {
+        flex: 1,
     },
     billNumber: {
-        fontSize: 18,
+        fontSize: moderateScale(16),
         fontWeight: '800',
+        marginBottom: verticalScale(2),
     },
     billDate: {
-        fontSize: 12,
-        color: '#888',
-        marginTop: 2,
+        fontSize: moderateScale(12),
+        fontWeight: '500',
+    },
+    amountBadge: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    currencySymbol: {
+        fontSize: moderateScale(12),
+        fontWeight: '600',
+        marginTop: verticalScale(2),
+        marginRight: scale(1),
     },
     billAmount: {
-        fontSize: 20,
+        fontSize: moderateScale(20),
         fontWeight: '900',
     },
     divider: {
-        height: 1,
+        height: scale(1),
         width: '100%',
-        marginVertical: 12,
+        marginBottom: verticalScale(12),
     },
     cardFooter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
+    itemInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: scale(6),
+    },
     itemCount: {
-        fontSize: 14,
-        color: '#888',
+        fontSize: moderateScale(13),
         fontWeight: '600',
     },
     pdfButton: {
-        backgroundColor: '#2E7D32',
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 15,
-        borderRadius: 12,
+        paddingVertical: verticalScale(6),
+        paddingHorizontal: scale(10),
+        paddingRight: scale(6),
+        borderRadius: scale(20),
     },
     pdfButtonText: {
-        color: '#FFF',
-        fontSize: 14,
-        fontWeight: '800',
-        marginLeft: 5,
+        fontSize: moderateScale(12),
+        fontWeight: '700',
+        marginRight: scale(8),
+    },
+    pdfIconCircle: {
+        width: scale(24),
+        height: scale(24),
+        borderRadius: scale(12),
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     emptyContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 100,
+        marginTop: verticalScale(100),
+    },
+    emptyIconBg: {
+        width: scale(120),
+        height: scale(120),
+        borderRadius: scale(60),
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: verticalScale(20),
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
     emptyText: {
-        fontSize: 16,
+        fontSize: moderateScale(16),
         fontWeight: '600',
-        marginTop: 15,
-    }
+        opacity: 0.8,
+    },
+    // Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        borderTopLeftRadius: scale(30),
+        borderTopRightRadius: scale(30),
+        height: '80%',
+        padding: scale(20),
+    },
+    modalDragHandle: {
+        width: scale(40),
+        height: scale(5),
+        backgroundColor: '#DDD',
+        borderRadius: scale(3),
+        alignSelf: 'center',
+        marginBottom: verticalScale(15),
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: verticalScale(20),
+    },
+    modalTitle: {
+        fontSize: moderateScale(22),
+        fontWeight: '900',
+    },
+    modalSubtitle: {
+        fontSize: moderateScale(13),
+        fontWeight: '500',
+        marginTop: verticalScale(4),
+    },
+    closeIcon: {
+        width: scale(40),
+        height: scale(40),
+        borderRadius: scale(20),
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalBody: {
+        flex: 1,
+    },
+    tableHeader: {
+        flexDirection: 'row',
+        paddingVertical: verticalScale(10),
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEE',
+    },
+    tableHeaderText: {
+        fontSize: moderateScale(11),
+        fontWeight: '800',
+        textTransform: 'uppercase',
+    },
+    tableRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: verticalScale(12),
+        borderBottomWidth: 1,
+    },
+    itemName: {
+        fontSize: moderateScale(14),
+        fontWeight: '700',
+    },
+    itemSubName: {
+        fontSize: moderateScale(10),
+        fontWeight: '600',
+        marginTop: 2,
+    },
+    tableCell: {
+        fontSize: moderateScale(13),
+        fontWeight: '600',
+    },
+    totalSection: {
+        marginTop: verticalScale(20),
+        paddingTop: verticalScale(10),
+    },
+    totalRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: verticalScale(10),
+    },
+    totalLabel: {
+        fontSize: moderateScale(14),
+        fontWeight: '600',
+    },
+    totalValue: {
+        fontSize: moderateScale(14),
+        fontWeight: '700',
+    },
+    grandTotalRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: scale(15),
+        borderRadius: scale(16),
+        marginTop: verticalScale(10),
+    },
+    grandTotalLabel: {
+        fontSize: moderateScale(15),
+        fontWeight: '900',
+    },
+    grandTotalValue: {
+        fontSize: moderateScale(20),
+        fontWeight: '900',
+    },
+    modalFooter: {
+        paddingTop: verticalScale(20),
+        paddingBottom: verticalScale(10),
+    },
+    downloadBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: verticalScale(56),
+        borderRadius: scale(18),
+        gap: scale(10),
+    },
+    downloadBtnText: {
+        color: '#FFF',
+        fontSize: moderateScale(16),
+        fontWeight: '700',
+    },
 });
