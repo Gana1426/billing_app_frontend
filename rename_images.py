@@ -1,6 +1,6 @@
 import os
 
-images_dir = r'd:\My-Projects\Bill App\billing_app_frontend\assets\images'
+images_dir = r'd:\My-Projects\Bill App\billing_app_frontend\src\assets\images'
 renames = {
     'Bottle Gourd.png': 'Bottle_Gourd.png',
     'Snake Gourd.png': 'Snake_Gourd.png',
