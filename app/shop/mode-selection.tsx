@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
     StyleSheet,
     View,
@@ -6,27 +6,26 @@ import {
     TouchableOpacity,
     Platform,
     ScrollView,
-    StatusBar as RNStatusBar
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../../context/AuthContext';
-import { useAppTheme } from '../../context/ThemeContext';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useAuth } from '@/context/AuthContext';
+import { useAppTheme } from '@/context/ThemeContext';
+import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { moderateScale, scale, verticalScale } from '../../utils/responsive';
+import { moderateScale, scale, verticalScale } from '@/utils/responsive';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ModeSelectionScreen() {
     const router = useRouter();
     const { user, logout } = useAuth();
-    const { isDark, toggleTheme, theme } = useAppTheme();
+    const { isDark, toggleTheme, language } = useAppTheme();
     const insets = useSafeAreaInsets();
 
     const handleModeSelect = (mode: 'wholesale' | 'retail') => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        // Navigate to shop with the selected mode
         router.push({ pathname: '/shop', params: { mode } });
     };
 
@@ -36,297 +35,188 @@ export default function ModeSelectionScreen() {
         router.replace('/login');
     };
 
-    const primaryColor = '#00A86B';
-    const accentColor = '#FFA000';
-    const textColor = isDark ? '#FFFFFF' : '#1A1C1E';
-    const labelColor = isDark ? '#BBB' : '#6B7280';
+    const primaryColor = '#FF8C00';
+    const background = isDark ? '#0F0F0F' : '#F8FAFC';
     const cardBg = isDark ? '#1E1E1E' : '#FFFFFF';
+    const textColor = isDark ? '#FFF' : '#1E293B';
+    const subTextColor = isDark ? '#94A3B8' : '#64748B';
 
     return (
-        <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F4F6F9' }]}>
-            <StatusBar style={isDark ? "light" : "dark"} backgroundColor={isDark ? "#121212" : "#F4F6F9"} />
+        <View style={[styles.container, { backgroundColor: background }]}>
+            <StatusBar style="light" backgroundColor="#FF8C00" />
 
-            {/* Decorative Background */}
-            <View style={[styles.bgDecorCircle, { backgroundColor: isDark ? '#1A3320' : '#E8F5E9', top: -verticalScale(50), right: -scale(100) }]} />
-            <View style={[styles.bgDecorCircle, { backgroundColor: isDark ? '#1A3320' : '#E8F5E9', top: verticalScale(100), left: -scale(150), width: scale(300), height: scale(300), borderRadius: scale(150) }]} />
-
-            <View style={[styles.topBar, { paddingTop: insets.top + (Platform.OS === 'android' ? 10 : 0) }]}>
-                <View style={styles.userInfo}>
-                    <View style={[styles.avatar, { backgroundColor: isDark ? '#333' : '#E0F2F1' }]}>
-                        <Text style={[styles.avatarText, { color: primaryColor }]}>
-                            {user?.username?.charAt(0).toUpperCase() || 'A'}
-                        </Text>
-                    </View>
-                    <View>
-                        <Text style={[styles.greeting, { color: labelColor }]}>Welcome Back,</Text>
-                        <Text style={[styles.userName, { color: textColor }]}>{user?.username || 'Admin'}</Text>
-                    </View>
-                </View>
-
-                <View style={styles.topControls}>
-                    <TouchableOpacity
-                        onPress={() => {
-                            Haptics.selectionAsync();
-                            toggleTheme();
-                        }}
-                        style={[styles.iconButton, { backgroundColor: isDark ? '#333' : '#FFF' }]}
-                    >
-                        <Ionicons name={isDark ? "sunny" : "moon"} size={20} color={isDark ? "#FFD600" : "#1A1C1E"} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={handleLogout}
-                        style={[styles.iconButton, { backgroundColor: '#FEE2E2', marginLeft: scale(10) }]}
-                    >
-                        <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
-                {/* Shop Banner */}
-                <Animated.View entering={FadeInDown.delay(200)} style={styles.header}>
-                    <View style={[styles.logoContainer, { borderColor: isDark ? '#333' : '#E0E0E0', backgroundColor: isDark ? '#1E1E1E' : '#FFF' }]}>
-                        <View style={[styles.logoBox, { backgroundColor: primaryColor }]}>
-                            <MaterialCommunityIcons name="storefront" size={24} color="#FFF" />
-                        </View>
-                        <View style={styles.brandTextContainer}>
-                            <Text style={[styles.brandName, { color: textColor }]}>
-                                {user?.shopName || 'MY VEGETABLE SHOP'}
-                            </Text>
-                            <Text style={[styles.brandSub, { color: labelColor }]}>
-                                BILLING DASHBOARD
-                            </Text>
-                        </View>
-                    </View>
-
-                    <Text style={[styles.sectionTitle, { color: labelColor }]}>SELECT MODE</Text>
+            <LinearGradient
+                colors={['#FF8C00', '#FFA500']}
+                style={[styles.hero, { paddingTop: insets.top + verticalScale(40) }]}
+            >
+                <View style={styles.headerDecor} />
+                <Animated.View entering={ZoomIn.duration(600)} style={styles.avatarCircle}>
+                    <Text style={styles.avatarText}>{user?.username?.charAt(0).toUpperCase() || 'S'}</Text>
                 </Animated.View>
+                <Animated.Text entering={FadeInDown.delay(200)} style={styles.greeting}>{language === 'Tamil' ? 'மீண்டும் வருக,' : 'Welcome back,'}</Animated.Text>
+                <Animated.Text entering={FadeInDown.delay(300)} style={styles.userName}>{user?.username || (language === 'Tamil' ? 'உரிமையாளர்' : 'Owner')}</Animated.Text>
+                <Animated.Text entering={FadeInDown.delay(400)} style={styles.shopName}>{user?.shopName || 'SUJI VEGETABLES'}</Animated.Text>
+                
+                <View style={styles.heroActions}>
+                    <TouchableOpacity onPress={toggleTheme} style={styles.roundActionBtn}>
+                        <Ionicons name={isDark ? "sunny" : "moon"} size={22} color="#FF8C00" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleLogout} style={[styles.roundActionBtn, { backgroundColor: '#EF4444' }]}>
+                        <Ionicons name="log-out" size={22} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+            </LinearGradient>
 
-                {/* Cards Container */}
-                <View style={styles.cardsContainer}>
-                    {/* Wholesale Card */}
-                    <Animated.View entering={FadeInUp.delay(300).springify()} style={{ width: '100%' }}>
-                        <TouchableOpacity
-                            style={[styles.card, { backgroundColor: cardBg }]}
-                            onPress={() => handleModeSelect('wholesale')}
-                            activeOpacity={0.9}
+            <ScrollView 
+                contentContainerStyle={[
+                    styles.scrollContent, 
+                    { 
+                        flexGrow: 1,
+                        paddingBottom: Math.max(insets.bottom, verticalScale(24)) 
+                    }
+                ]} 
+                showsVerticalScrollIndicator={false}
+            >
+                <Animated.Text entering={FadeInUp.delay(500)} style={[styles.sectionTitle, { color: subTextColor }]}>{language === 'Tamil' ? 'பில்லிங் முறையைத் தேர்ந்தெடுக்கவும்' : 'CHOOSE BILLING MODE'}</Animated.Text>
+                
+                <View style={styles.cardsGrid}>
+                    <Animated.View entering={FadeInUp.delay(600).springify()}>
+                        <TouchableOpacity 
+                            style={[styles.modeCard, { backgroundColor: cardBg }]} 
+                            onPress={() => handleModeSelect('retail')}
+                            activeOpacity={0.85}
                         >
-                            <View style={styles.cardRibbonOrange} />
-                            <View style={styles.cardContent}>
-                                <View style={[styles.iconBox, { backgroundColor: '#FFF8E1' }]}>
-                                    <MaterialCommunityIcons name="package-variant-closed" size={32} color="#FFA000" />
-                                </View>
-                                <View style={styles.cardTextContent}>
-                                    <Text style={[styles.cardTitle, { color: textColor }]}>Wholesale</Text>
-                                    <Text style={[styles.cardSubtitle, { color: '#FFA000' }]}>மொத்த விற்பனை</Text>
-                                    <Text style={[styles.cardDesc, { color: labelColor }]}>
-                                        Bulk billing with crate management
-                                    </Text>
-                                </View>
-                                <Ionicons name="chevron-forward" size={24} color={labelColor} />
+                            <View style={[styles.modeIconCircle, { backgroundColor: primaryColor + '10' }]}>
+                                <MaterialCommunityIcons name="shopping" size={36} color={primaryColor} />
                             </View>
+                            <View style={styles.modeTextCol}>
+                                <Text style={[styles.modeName, { color: textColor }]}>{language === 'Tamil' ? 'சில்லறை விற்பனை முறை' : 'Retail Mode'}</Text>
+                                <Text style={[styles.modeTamil, { color: primaryColor }]}>சில்லறை விற்பனை</Text>
+                                <Text style={[styles.modeDesc, { color: subTextColor }]}>{language === 'Tamil' ? 'தனிநபர் விற்பனைக்கான விரைவான பில்லிங்' : 'Quick individual billing with auto-suggest'}</Text>
+                            </View>
+                            <Feather name="chevron-right" size={24} color={subTextColor} />
                         </TouchableOpacity>
                     </Animated.View>
 
-                    {/* Retail Card */}
-                    <Animated.View entering={FadeInUp.delay(400).springify()} style={{ width: '100%' }}>
-                        <TouchableOpacity
-                            style={[styles.card, { backgroundColor: cardBg }]}
-                            onPress={() => handleModeSelect('retail')}
-                            activeOpacity={0.9}
+                    <Animated.View entering={FadeInUp.delay(700).springify()}>
+                        <TouchableOpacity 
+                            style={[styles.modeCard, { backgroundColor: cardBg }]} 
+                            onPress={() => handleModeSelect('wholesale')}
+                            activeOpacity={0.85}
                         >
-                            <View style={styles.cardRibbonGreen} />
-                            <View style={styles.cardContent}>
-                                <View style={[styles.iconBox, { backgroundColor: '#E8F5E9' }]}>
-                                    <MaterialCommunityIcons name="shopping" size={32} color={primaryColor} />
-                                </View>
-                                <View style={styles.cardTextContent}>
-                                    <Text style={[styles.cardTitle, { color: textColor }]}>Retail</Text>
-                                    <Text style={[styles.cardSubtitle, { color: primaryColor }]}>சில்லரை விற்பனை</Text>
-                                    <Text style={[styles.cardDesc, { color: labelColor }]}>
-                                        Quick billing for individual customers
-                                    </Text>
-                                </View>
-                                <Ionicons name="chevron-forward" size={24} color={labelColor} />
+                            <View style={[styles.modeIconCircle, { backgroundColor: '#3B82F610' }]}>
+                                <MaterialCommunityIcons name="package-variant-closed" size={36} color="#3B82F6" />
                             </View>
+                            <View style={styles.modeTextCol}>
+                                <Text style={[styles.modeName, { color: textColor }]}>{language === 'Tamil' ? 'மொத்த விற்பனை முறை' : 'Wholesale Mode'}</Text>
+                                <Text style={[styles.modeTamil, { color: '#3B82F6' }]}>மொத்த விற்பனை</Text>
+                                <Text style={[styles.modeDesc, { color: subTextColor }]}>{language === 'Tamil' ? 'மொத்த ஆர்டர்கள் மற்றும் தள்ளுபடிகள்' : 'Bulk orders with crate tracking and discounts'}</Text>
+                            </View>
+                            <Feather name="chevron-right" size={24} color={subTextColor} />
+                        </TouchableOpacity>
+                    </Animated.View>
+
+                    <Animated.View entering={FadeInUp.delay(800).springify()}>
+                        <TouchableOpacity 
+                            style={[styles.modeCard, { backgroundColor: cardBg }]} 
+                            onPress={() => router.push('/shop/dashboard')}
+                            activeOpacity={0.85}
+                        >
+                            <View style={[styles.modeIconCircle, { backgroundColor: '#10B98110' }]}>
+                                <MaterialCommunityIcons name="view-dashboard" size={36} color="#10B981" />
+                            </View>
+                            <View style={styles.modeTextCol}>
+                                <Text style={[styles.modeName, { color: textColor }]}>{language === 'Tamil' ? 'முகப்புத் திரை' : 'Dashboard'}</Text>
+                                <Text style={[styles.modeTamil, { color: '#10B981' }]}>முகப்பு தகவல்கள்</Text>
+                                <Text style={[styles.modeDesc, { color: subTextColor }]}>{language === 'Tamil' ? 'விற்பனை அறிக்கைகள் மற்றும் இருப்பைக் காண்க' : 'View sales reports, inventory and history'}</Text>
+                            </View>
+                            <Feather name="chevron-right" size={24} color={subTextColor} />
                         </TouchableOpacity>
                     </Animated.View>
                 </View>
-
             </ScrollView>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
+    container: { flex: 1 },
+    hero: {
+        paddingHorizontal: scale(30),
+        paddingBottom: verticalScale(40),
+        borderBottomLeftRadius: scale(40),
+        borderBottomRightRadius: scale(40),
+        alignItems: 'center',
+        overflow: 'hidden',
     },
-    bgDecorCircle: {
+    headerDecor: {
         position: 'absolute',
         width: scale(300),
         height: scale(300),
         borderRadius: scale(150),
-        opacity: 0.5,
+        backgroundColor: 'rgba(255,255,255,0.12)',
+        top: -scale(100),
+        right: -scale(80),
     },
-    topBar: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: scale(20),
-        paddingBottom: verticalScale(15),
-        marginBottom: verticalScale(10)
-    },
-    userInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: scale(12),
-    },
-    avatar: {
-        width: scale(40),
-        height: scale(40),
-        borderRadius: scale(14),
+    avatarCircle: {
+        width: scale(80),
+        height: scale(80),
+        borderRadius: scale(30),
+        backgroundColor: '#FFF',
         alignItems: 'center',
         justifyContent: 'center',
+        marginBottom: verticalScale(20),
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 15,
+        shadowOffset: { width: 0, height: 10 },
     },
-    avatarText: {
-        fontSize: moderateScale(18),
-        fontWeight: 'bold',
-    },
-    greeting: {
-        fontSize: moderateScale(11),
-        fontWeight: '600',
-        marginBottom: verticalScale(2)
-    },
-    userName: {
-        fontSize: moderateScale(16),
-        fontWeight: '800',
-    },
-    topControls: {
+    avatarText: { fontSize: moderateScale(36), fontWeight: '900', color: '#FF8C00' },
+    greeting: { fontSize: moderateScale(16), fontWeight: '600', color: 'rgba(255,255,255,0.85)', marginBottom: 4 },
+    userName: { fontSize: moderateScale(32), fontWeight: '900', color: '#FFF', marginBottom: 4, letterSpacing: -0.5 },
+    shopName: { fontSize: moderateScale(14), fontWeight: '700', color: '#FFF', opacity: 0.9, letterSpacing: 1, textTransform: 'uppercase' },
+    heroActions: {
         flexDirection: 'row',
-        alignItems: 'center',
+        gap: scale(15),
+        marginTop: verticalScale(25),
     },
-    iconButton: {
-        width: scale(36),
-        height: scale(36),
-        borderRadius: scale(12),
+    roundActionBtn: {
+        width: scale(50),
+        height: scale(50),
+        borderRadius: scale(25),
+        backgroundColor: '#FFF',
         alignItems: 'center',
         justifyContent: 'center',
-        elevation: 2,
+        elevation: 5,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-    },
-    scrollContent: {
-        paddingBottom: verticalScale(40),
-        paddingHorizontal: scale(20),
-    },
-    header: {
-        marginBottom: verticalScale(25),
-    },
-    logoContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: verticalScale(25),
-        paddingVertical: verticalScale(15),
-        paddingHorizontal: scale(20),
-        borderRadius: scale(20),
-        borderWidth: scale(1),
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-    },
-    logoBox: {
-        width: scale(40),
-        height: scale(40),
-        borderRadius: scale(12),
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: scale(15),
-    },
-    brandTextContainer: {
-        flex: 1,
-    },
-    brandName: {
-        fontSize: moderateScale(16),
-        fontWeight: '900',
-        letterSpacing: 0.5,
-        textTransform: 'uppercase',
-    },
-    brandSub: {
-        fontSize: moderateScale(10),
-        fontWeight: '600',
-        marginTop: verticalScale(2),
-        letterSpacing: 1,
-    },
-    sectionTitle: {
-        fontSize: moderateScale(13),
-        fontWeight: '700',
-        letterSpacing: 1,
-        marginLeft: scale(5)
-    },
-    cardsContainer: {
-        gap: scale(16),
-    },
-    card: {
-        borderRadius: scale(20),
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.1,
         shadowRadius: 10,
-        overflow: 'hidden',
-        minHeight: verticalScale(100),
     },
-    cardRibbonOrange: {
-        position: 'absolute',
-        top: 0,
-        bottom: 0,
-        left: 0,
-        width: scale(6),
-        backgroundColor: '#FFA000',
-    },
-    cardRibbonGreen: {
-        position: 'absolute',
-        top: 0,
-        bottom: 0,
-        left: 0,
-        width: scale(6),
-        backgroundColor: '#00A86B',
-    },
-    cardContent: {
+    scrollContent: { padding: scale(25), paddingTop: verticalScale(30) },
+    sectionTitle: { fontSize: moderateScale(12), fontWeight: '800', letterSpacing: 2, marginBottom: verticalScale(20) },
+    cardsGrid: { gap: verticalScale(16) },
+    modeCard: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: scale(20),
-        paddingLeft: scale(24) // account for ribbon
+        borderRadius: scale(24),
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 6 },
     },
-    iconBox: {
-        width: scale(50),
-        height: scale(50),
-        borderRadius: scale(14),
+    modeIconCircle: {
+        width: scale(64),
+        height: scale(64),
+        borderRadius: scale(20),
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: scale(16),
+        marginRight: scale(18),
     },
-    cardTextContent: {
-        flex: 1,
-    },
-    cardTitle: {
-        fontSize: moderateScale(18),
-        fontWeight: '800',
-        marginBottom: verticalScale(2)
-    },
-    cardSubtitle: {
-        fontSize: moderateScale(12),
-        fontWeight: '700',
-        marginBottom: verticalScale(6)
-    },
-    cardDesc: {
-        fontSize: moderateScale(11),
-        fontWeight: '500',
-    },
+    modeTextCol: { flex: 1 },
+    modeName: { fontSize: moderateScale(20), fontWeight: '900', marginBottom: 2 },
+    modeTamil: { fontSize: moderateScale(14), fontWeight: '800', marginBottom: 8 },
+    modeDesc: { fontSize: moderateScale(12), fontWeight: '600', lineHeight: moderateScale(18) },
 });
