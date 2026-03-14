@@ -347,38 +347,10 @@ export default function ShopScreen() {
   const finalizeBill = async () => {
     // Proceed to print/save
     try {
-      const [mName, mNumber] = await Promise.all([
-        Storage.getItem(KEYS.MERCHANT_NAME),
-        Storage.getItem(KEYS.MERCHANT_NUMBER),
-      ]);
-
-      const billData = {
-        shopName: mName || "சுஜி காய்கறி கடை",
-        logo: "Logo_bill.png",
-        phone: mNumber || "9095938085",
-        address: "", // Leave blank to use Tamil default in generator
-        userName: customerName || (language === 'Tamil' ? 'வாடிக்கையாளர்' : 'Walk-in Customer'),
-        billNumber: `BILL-${Date.now()}`,
-        date: new Date().toLocaleString("en-IN"),
-        mode: isWholesale ? "Wholesale" : "Retail",
-        language: language,
-        items: cart.map((item) => ({
-          id: item.id,
-          name: item.tamilName || item.name,
-          tamilName: item.tamilName,
-          quantity: item.quantity,
-          price: item.price,
-          discount: item.itemDiscount || 0,
-          total: parseFloat(item.total.toFixed(2)),
-        })),
-        subTotal: parseFloat(cartTotal.toFixed(2)),
-        discount: parseFloat(discount.toString()) || 0,
-        grandTotal: parseFloat((cartTotal - (parseFloat(discount.toString()) || 0)).toFixed(2)),
-      } as any;
-
+      const billData = await prepareBillData();
       await SyncManager.queueBill(billData);
-      await generateBillPDF(billData);
-      Alert.alert("Success", "Bill Generated Successfully");
+      await generateBillPDF(billData, { printDirect: true });
+      showSuccessAlert();
       setCart([]);
       setBillPreviewVisible(false);
       setCustomerName("");
@@ -388,6 +360,57 @@ export default function ShopScreen() {
       Alert.alert("Error", "Could not generate bill");
     }
   };
+
+  const shareBill = async () => {
+    try {
+      const billData = await prepareBillData();
+      await generateBillPDF(billData, { printDirect: false });
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Error", "Could not share bill");
+    }
+  };
+
+  const prepareBillData = async () => {
+    const [mName, mNumber] = await Promise.all([
+      Storage.getItem(KEYS.MERCHANT_NAME),
+      Storage.getItem(KEYS.MERCHANT_NUMBER),
+    ]);
+
+    return {
+      shopName: mName || "சுஜி காய்கறி கடை",
+      logo: "Logo_bill.png",
+      phone: mNumber || "9095938085",
+      address: "", 
+      userName: customerName || (language === 'Tamil' ? 'வாடிக்கையாளர்' : 'Walk-in Customer'),
+      billNumber: `BILL-${Date.now()}`,
+      date: new Date().toLocaleString("en-IN"),
+      mode: isWholesale ? "Wholesale" : "Retail",
+      language: language,
+      items: cart.map((item) => ({
+        id: item.id,
+        name: item.tamilName || item.name,
+        tamilName: item.tamilName,
+        quantity: item.quantity,
+        price: item.price,
+        discount: item.itemDiscount || 0,
+        total: parseFloat(item.total.toFixed(2)),
+      })),
+      subTotal: parseFloat(cartTotal.toFixed(2)),
+      discount: parseFloat(discount.toString()) || 0,
+      grandTotal: parseFloat((cartTotal - (parseFloat(discount.toString()) || 0)).toFixed(2)),
+    } as any;
+  };
+
+  const showSuccessAlert = () => {
+    Alert.alert(
+      language === 'Tamil' ? "வெற்றி" : "Success",
+      language === 'Tamil' 
+        ? "பில் வெற்றிகரமாக உருவாக்கப்பட்டது (58mm அளவில்)." 
+        : "Bill Generated Successfully (Pre-formatted to 58mm standard)."
+    );
+  };
+
 
   const updateCartItemInPreview = (
     id: string,
@@ -413,6 +436,38 @@ export default function ShopScreen() {
             }
           : item,
       ),
+    );
+  };
+
+  const adjustQtyInPreview = (id: string, delta: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const newQty = parseFloat(Math.max(0.25, item.quantity + delta).toFixed(2));
+          return {
+            ...item,
+            quantity: newQty,
+            total: newQty * item.price - (item.itemDiscount || 0),
+          };
+        }
+        return item;
+      }),
+    );
+  };
+
+  const removeItemFromPreview = (id: string) => {
+    Alert.alert(
+      language === "Tamil" ? "நீக்கு" : "Remove Item",
+      language === "Tamil" ? "பொருளை நீக்க வேண்டுமா?" : "Are you sure you want to remove this item?",
+      [
+        { text: language === "Tamil" ? "இல்லை" : "No", style: "cancel" },
+        { 
+          text: language === "Tamil" ? "ஆம்" : "Yes", 
+          style: "destructive", 
+          onPress: () => setCart(prev => prev.filter(item => item.id !== id))
+        }
+      ]
     );
   };
 
@@ -1218,16 +1273,12 @@ export default function ShopScreen() {
                 </Text>
                 <View style={styles.headerStatusBadge}>
                   <View style={styles.statusDot} />
-                  <Text style={styles.statusText}>{language === 'Tamil' ? 'தயாராக உள்ளது' : 'Ready to Generate'}</Text>
+                  <Text style={styles.statusText}>
+                    {language === 'Tamil' ? '58mm அளவில் தயாராக உள்ளது' : 'Ready (58mm Standard)'}
+                  </Text>
                 </View>
               </View>
-              <TouchableOpacity
-                onPress={finalizeBill}
-                style={styles.confirmHeaderBtn}
-              >
-                <Feather name="check" size={20} color={primaryColor} />
-                <Text style={[styles.confirmHeaderText, { color: primaryColor }]}>{language === 'Tamil' ? 'உறுதி' : 'Confirm'}</Text>
-              </TouchableOpacity>
+              <View style={{ width: scale(36) }} />
             </View>
           </LinearGradient>
 
@@ -1340,14 +1391,20 @@ export default function ShopScreen() {
                     <View style={[styles.dashboardIconBox, { backgroundColor: primaryColor + '15' }]}>
                       <MaterialCommunityIcons name="food-apple" size={22} color={primaryColor} />
                     </View>
-                    <View style={{ flex: 1.5 }}>
+                    <View style={{ flex: 1.5, marginLeft: scale(8) }}>
                       <Text style={[styles.trTamil, { color: textColor }]} numberOfLines={1}>{item.tamilName}</Text>
-                      <Text style={[styles.trEng, { color: labelColor }]} numberOfLines={1}>{item.name}</Text>
+                      <Text style={[styles.trEng, { color: labelColor }]} numberOfLines={1}>₹{item.price}/kg</Text>
                     </View>
                     
-                    <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                       <View style={{ alignItems: 'center' }}>
-                         <Text style={styles.dashboardValLabel}>{language === 'Tamil' ? 'அளவு' : 'QTY'}</Text>
+                    <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                       <TouchableOpacity 
+                         onPress={() => adjustQtyInPreview(item.id, -0.25)}
+                         style={[styles.previewStepBtn, { backgroundColor: isDark ? '#333' : '#F3F4F6' }]}
+                       >
+                         <Feather name="minus" size={14} color={textColor} />
+                       </TouchableOpacity>
+                       
+                       <View style={{ alignItems: 'center', minWidth: scale(45) }}>
                          <TextInput
                             keyboardType="numeric"
                             style={[styles.dashboardTrInput, { color: textColor, backgroundColor: isDark ? '#333' : '#F3F4F6' }]}
@@ -1355,27 +1412,39 @@ export default function ShopScreen() {
                             selectTextOnFocus
                             onChangeText={(v) => updateCartItemInPreview(item.id, v, item.price.toString(), (item.itemDiscount || 0).toString())}
                           />
+                          <Text style={{ fontSize: 8, fontWeight: '700', color: labelColor, marginTop: 2 }}>KG</Text>
                        </View>
-                       <View style={{ alignItems: 'center' }}>
-                         <Text style={styles.dashboardValLabel}>{language === 'Tamil' ? 'விலை' : 'PRICE'}</Text>
-                         <TextInput
-                            keyboardType="numeric"
-                            style={[styles.dashboardTrInput, { color: textColor, backgroundColor: isDark ? '#333' : '#F3F4F6' }]}
-                            value={item.price.toString()}
-                            selectTextOnFocus
-                            onChangeText={(v) => updateCartItemInPreview(item.id, item.quantity.toString(), v, (item.itemDiscount || 0).toString())}
-                          />
-                       </View>
+
+                       <TouchableOpacity 
+                         onPress={() => adjustQtyInPreview(item.id, 0.25)}
+                         style={[styles.previewStepBtn, { backgroundColor: primaryColor }]}
+                       >
+                         <Feather name="plus" size={14} color="#FFF" />
+                       </TouchableOpacity>
                     </View>
 
-                    <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                    <View style={{ flex: 1.2, alignItems: 'flex-end' }}>
                       <Text style={[styles.trTotal, { color: primaryColor }]}>₹{item.total.toFixed(0)}</Text>
-                      <View style={[styles.paidBadge, { backgroundColor: '#10B98115', marginTop: 4 }]}>
-                         <Text style={styles.paidText}>{language === 'Tamil' ? 'சேர்க்கப்பட்டது' : 'Added'}</Text>
-                      </View>
+                      <TouchableOpacity 
+                        onPress={() => removeItemFromPreview(item.id)}
+                        style={{ marginTop: verticalScale(6) }}
+                      >
+                         <Feather name="trash-2" size={18} color="#EF4444" />
+                      </TouchableOpacity>
                     </View>
                   </Animated.View>
                 ))}
+                
+                {/* ── ADD ITEM QUICK BUTTON ── */}
+                <Animated.View entering={FadeInDown.delay(500)}>
+                  <TouchableOpacity 
+                    style={[styles.addItemQuickBtn, { borderColor: primaryColor, backgroundColor: primaryColor + '08' }]}
+                    onPress={() => setBillPreviewVisible(false)}
+                  >
+                    <Feather name="plus-circle" size={20} color={primaryColor} />
+                    <Text style={[styles.addItemQuickText, { color: primaryColor }]}>{t.ADD_ITEM || 'Add Item'}</Text>
+                  </TouchableOpacity>
+                </Animated.View>
               </Animated.View>
               {/* ── FINAL BREAKDOWN CARD ── */}
               <Animated.View entering={FadeInDown.delay(550)} style={{ marginTop: 20 }}>
@@ -1407,19 +1476,57 @@ export default function ShopScreen() {
               {/* ── SHOP FOOTER BRANDING ── */}
               <View style={styles.invoiceFooterBranding}>
                 <Image
-                  source={require("../../src/assets/images/Logo_bill.png")}
+                  source={require("../../src/assets/images/icon.png")}
                   style={styles.footerLogo}
                 />
                 <Text style={[styles.footerShopName, { color: textColor }]}>{user?.shopName || "SUJI VEGETABLES"}</Text>
                 <Text style={[styles.footerShopLoc, { color: labelColor }]}>
                   {language === 'Tamil' ? 'பாண்டி - திண்டிவனம் மெயின் ரோடு, கிளியனூர்.' : 'Pondy - Tindivanam Road, Kiliyanur'}
                 </Text>
-                <Text style={[styles.footerShopContact, { color: labelColor }]}>Ph: +91 98765 43210</Text>
+                <Text style={[styles.footerShopContact, { color: labelColor }]}>Ph: +91 9095938085</Text>
               </View>
             </View>
 
-            <View style={{ height: 100 }} />
+            <View style={{ height: 120 }} />
           </ScrollView>
+
+          {/* Sticky Professional Footer Actions */}
+          <Animated.View 
+            entering={SlideInUp.delay(600)}
+            style={[
+              styles.stickyInvoiceFooter, 
+              { 
+                backgroundColor: cardBg, 
+                borderTopColor: borderCol,
+                paddingBottom: insets.bottom > 0 ? insets.bottom + verticalScale(10) : verticalScale(20)
+              }
+
+            ]}
+          >
+             <View style={styles.footerButtonsRow}>
+               <TouchableOpacity 
+                 style={[styles.shareActionBtn, { borderColor: primaryColor }]} 
+                 onPress={shareBill}
+                 activeOpacity={0.8}
+               >
+                 <MaterialCommunityIcons name="share-variant" size={24} color={primaryColor} />
+               </TouchableOpacity>
+
+               <TouchableOpacity 
+                 style={[styles.mainGenerateBtn, { backgroundColor: primaryColor, flex: 1 }]} 
+                 onPress={finalizeBill}
+                 activeOpacity={0.8}
+               >
+                 <View style={[styles.generateBtnContent, { flex: 1, justifyContent: 'center' }]}>
+                   <MaterialCommunityIcons name="printer-check" size={24} color="#FFF" />
+                   <Text style={styles.mainGenerateText}>
+                     {language === 'Tamil' ? 'பிரிண்ட் & சேமி' : 'Print & Save'}
+                   </Text>
+                 </View>
+               </TouchableOpacity>
+             </View>
+
+          </Animated.View>
         </SafeAreaView>
       </Modal>
     </View>
@@ -1621,8 +1728,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: scale(20),
+    marginTop: verticalScale(15), 
     marginBottom: verticalScale(15),
   },
+
   segmentControl: {
     flexDirection: "row",
     borderRadius: scale(12),
@@ -2371,6 +2480,91 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: '700',
     textTransform: 'uppercase',
+  },
+  stickyInvoiceFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: scale(20),
+    paddingTop: verticalScale(15),
+    borderTopWidth: 1,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 15,
+    zIndex: 100,
+  },
+
+  footerButtonsRow: {
+    flexDirection: 'row',
+    gap: scale(12),
+    alignItems: 'center',
+  },
+  shareActionBtn: {
+    width: verticalScale(60),
+    height: verticalScale(60),
+    borderRadius: scale(18),
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mainGenerateBtn: {
+    height: verticalScale(60),
+    borderRadius: scale(18),
+    flexDirection: 'row',
+    alignItems: 'center',
+
+    justifyContent: 'center',
+    paddingHorizontal: scale(20),
+
+    elevation: 4,
+    shadowColor: '#FF8C00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  generateBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(12),
+  },
+  mainGenerateText: {
+    color: '#FFF',
+    fontSize: moderateScale(17),
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  generateBtnArrow: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(10),
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addItemQuickBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: scale(14),
+    borderRadius: scale(16),
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    marginTop: verticalScale(10),
+    gap: scale(8),
+  },
+  addItemQuickText: {
+    fontSize: moderateScale(15),
+    fontWeight: '800',
+  },
+  previewStepBtn: {
+    width: scale(28),
+    height: scale(28),
+    borderRadius: scale(8),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardHeader: {
     flexDirection: 'row',

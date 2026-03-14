@@ -22,7 +22,8 @@ type BillData = {
   language?: 'English' | 'Tamil';
 };
 
-export const generateBillPDF = async (data: BillData) => {
+export const generateBillPDF = async (data: BillData, options: { printDirect?: boolean } = {}) => {
+
   const html = `
     <html>
       <head>
@@ -123,14 +124,23 @@ export const generateBillPDF = async (data: BillData) => {
   const estimatedHeight = 180 + (data.items.length * 30);
 
   try {
-    const { uri } = await Print.printToFileAsync({ 
-      html,
-      width: 155, // Adjusted to remove right white space
-      height: estimatedHeight,
-    });
-    console.log('File has been saved to:', uri);
-    await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+    if (options.printDirect) {
+      await Print.printAsync({
+        html,
+        width: 164, // Standard 58mm (164pt) width for thermal printers
+        height: estimatedHeight,
+      });
+    } else {
+      const { uri } = await Print.printToFileAsync({ 
+        html,
+        width: 164, // Standard 58mm (164pt) width for thermal printers
+        height: estimatedHeight,
+      });
+      console.log('File has been saved to:', uri);
+      await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+    }
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    console.error('Error generating/printing bill:', error);
   }
 };
+
